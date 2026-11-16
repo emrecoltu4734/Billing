@@ -1,0 +1,19 @@
+spring:
+  application:
+    name: isp-billing
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/billing}
+    username: ${DB_USER:billing}
+    password: ${DB_PASSWORD:billing}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+
+billing:
+  # Fatura numarası öneki (e-Arşiv formatında 3 karakter: ABC2026000000001)
+  invoice-prefix: ISP
+  # Son ödeme günü = fatura tarihi + bu kadar gün
+  payment-term-days: 15
