@@ -9,7 +9,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/subscriptions")
+@RequestMapping("/api/v1/subscriptions")
 public class SubscriptionController {
 
     private final SubscriptionService service;

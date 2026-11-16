@@ -28,6 +28,9 @@ public class Subscription {
     /** Dahil (inclusive): bu gün de faturalanır. */
     private LocalDate endDate;
 
+    /** Müşteri (İSS) sistemindeki abonelik/hizmet kimliği. */
+    private String externalRef;
+
     protected Subscription() {
     }
 
@@ -36,6 +39,10 @@ public class Subscription {
         this.plan = plan;
         this.startDate = startDate;
         this.status = SubscriptionStatus.ACTIVE;
+    }
+
+    void setExternalRef(String externalRef) {
+        this.externalRef = externalRef;
     }
 
     public void suspend() {
@@ -71,4 +78,5 @@ public class Subscription {
     public SubscriptionStatus getStatus() { return status; }
     public LocalDate getStartDate() { return startDate; }
     public LocalDate getEndDate() { return endDate; }
+    public String getExternalRef() { return externalRef; }
 }

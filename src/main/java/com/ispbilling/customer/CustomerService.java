@@ -23,6 +23,31 @@ public class CustomerService {
                 blankToNull(r.address())));
     }
 
+    /**
+     * Müşteri sistemindeki kimliğe göre aboneyi oluşturur veya günceller.
+     * Doğrulama çağıran tarafta yapılmış olmalıdır.
+     *
+     * @return core abone id'si
+     */
+    public Long upsertByExternalRef(String externalRef, CreateCustomerRequest r) {
+        var existing = customers.findByExternalRef(externalRef);
+        if (existing.isPresent()) {
+            Customer c = existing.get();
+            c.update(r.type(), r.name().trim(), r.taxId(), blankToNull(r.taxOffice()), blankToNull(r.phone()),
+                    blankToNull(r.email()), blankToNull(r.address()));
+            return c.getId();
+        }
+        Customer c = new Customer(r.type(), r.name().trim(), r.taxId(), blankToNull(r.taxOffice()),
+                blankToNull(r.phone()), blankToNull(r.email()), blankToNull(r.address()));
+        c.setExternalRef(externalRef);
+        return customers.saveAndFlush(c).getId();
+    }
+
+    @Transactional(readOnly = true)
+    public java.util.Optional<Long> findIdByExternalRef(String externalRef) {
+        return customers.findByExternalRef(externalRef).map(Customer::getId);
+    }
+
     @Transactional(readOnly = true)
     public Customer get(Long id) {
         return customers.findById(id).orElseThrow(() -> new NotFoundException("Abone", id));

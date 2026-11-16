@@ -28,12 +28,33 @@ public class PaymentService {
     /** Faturayı kilitleyerek tahsilat uygular; aynı anda gelen iki ödeme bakiyeyi aşamaz. */
     @Transactional
     public PaymentView pay(Long invoiceId, BigDecimal amount, PaymentMethod method, String reference) {
+        return pay(invoiceId, amount, method, reference, null, null);
+    }
+
+    /**
+     * @param externalRef ödeme işlem kimliği (tekrar gönderim koruması); yoksa null
+     * @param paidAt      ödeme zamanı; null ise şimdi
+     */
+    @Transactional
+    public PaymentView pay(Long invoiceId, BigDecimal amount, PaymentMethod method, String reference,
+                           String externalRef, OffsetDateTime paidAt) {
+        if (externalRef != null && payments.existsByExternalRef(externalRef)) {
+            throw new DuplicatePaymentException(externalRef);
+        }
         Invoice invoice = em.find(Invoice.class, invoiceId, LockModeType.PESSIMISTIC_WRITE);
         if (invoice == null) {
             throw new NotFoundException("Fatura", invoiceId);
         }
         invoice.applyPayment(amount);
-        return PaymentView.of(payments.save(new Payment(invoice, amount, method, reference, OffsetDateTime.now(clock))));
+        Payment payment = new Payment(invoice, amount, method, reference,
+                paidAt != null ? paidAt : OffsetDateTime.now(clock));
+        payment.setExternalRef(externalRef);
+        return PaymentView.of(payments.save(payment));
+    }
+
+    @Transactional(readOnly = true)
+    public boolean existsByExternalRef(String externalRef) {
+        return payments.existsByExternalRef(externalRef);
     }
 
     @Transactional(readOnly = true)

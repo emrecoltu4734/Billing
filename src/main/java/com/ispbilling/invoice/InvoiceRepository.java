@@ -23,6 +23,8 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
             """)
     List<Invoice> findOverdue(LocalDate today, Collection<InvoiceStatus> statuses);
 
+    java.util.Optional<Invoice> findByInvoiceNo(String invoiceNo);
+
     @EntityGraph(attributePaths = "customer")
     Page<Invoice> findByStatusIn(Collection<InvoiceStatus> statuses, Pageable pageable);
 

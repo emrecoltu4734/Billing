@@ -9,7 +9,7 @@ import java.time.YearMonth;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/bill-runs")
+@RequestMapping("/api/v1/bill-runs")
 public class BillRunController {
 
     private final BillRunService service;

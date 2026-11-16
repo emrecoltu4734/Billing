@@ -3,12 +3,12 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Giriş · ISP Billing</title>
+    <title>Giriş · ISP360</title>
     <link rel="stylesheet" th:href="@{/css/app.css}">
 </head>
 <body class="login-body">
 <form class="card login-card" th:action="@{/login}" method="post">
-    <div class="brand brand-dark"><span class="brand-mark">₺</span> ISP Billing</div>
+    <div class="brand brand-dark"><span class="brand-mark">₺</span> ISP360</div>
     <p class="muted">Abone faturalandırma paneli</p>
     <div class="flash flash-error" th:if="${param.error}">Kullanıcı adı veya şifre hatalı</div>
     <div class="flash flash-success" th:if="${param.logout}">Çıkış yapıldı</div>

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::section}, 'imports')}">
+<head><title>Veri aktarımı · ISP360</title></head>
+<body>
+<section>
+    <header class="page-head">
+        <div>
+            <h1>Veri aktarımı</h1>
+            <p class="muted">Dış sistemlerin giriş tablolarına (in_*) yazdığı kayıtlar her dakika otomatik işlenir.</p>
+        </div>
+        <div class="actions">
+            <a class="btn btn-ghost" th:href="@{/swagger-ui.html}" target="_blank">API dokümanı ↗</a>
+            <form th:action="@{/imports/run}" method="post">
+                <button type="submit" class="btn btn-primary">Şimdi çalıştır</button>
+            </form>
+        </div>
+    </header>
+
+    <div class="card">
+        <table>
+            <thead><tr><th>Giriş tablosu</th><th class="num">Bekleyen</th><th class="num">İşlendi</th>
+                <th class="num">Tekrar (yok sayıldı)</th><th class="num">Hatalı</th><th></th></tr></thead>
+            <tbody>
+            <tr th:each="t : ${tables}" th:with="c=${counts.get(t)}">
+                <td><span th:text="${t.label}"></span> <span class="muted mono" th:text="${t.tableName}"></span></td>
+                <td class="num" th:text="${c.pending}"></td>
+                <td class="num" th:text="${c.done}"></td>
+                <td class="num" th:text="${c.duplicate}"></td>
+                <td class="num" th:classappend="${c.error > 0} ? 'text-danger'" th:text="${c.error}"></td>
+                <td class="row-actions">
+                    <form th:if="${c.error > 0}" th:action="@{/imports/{t}/retry(t=${t.slug})}" method="post">
+                        <button class="btn btn-small" type="submit">Hatalıları yeniden dene</button>
+                    </form>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card">
+        <div class="card-head"><h2>Hatalı kayıtlar</h2></div>
+        <p class="empty" th:if="${importErrors.isEmpty()}">Hatalı kayıt yok.</p>
+        <table th:unless="${importErrors.isEmpty()}">
+            <thead><tr><th>Tablo</th><th class="num">Satır</th><th>Dış kimlik</th><th>Hata</th><th>Açıklama</th><th>Geliş</th></tr></thead>
+            <tbody>
+            <tr th:each="e : ${importErrors}">
+                <td th:text="${e.tableLabel()}"></td>
+                <td class="num mono" th:text="${e.id}"></td>
+                <td class="mono" th:text="${e.externalRef}"></td>
+                <td><span class="badge badge-red" th:text="${e.errorCode}"></span></td>
+                <td th:text="${e.errorMessage}"></td>
+                <td th:text="${@fmt.dateTime(e.createdAt)}"></td>
+            </tr>
+            </tbody>
+        </table>
+        <p class="hint">Hatayı kaynağında düzeltip yeni satır olarak gönderin veya eksik veriyi (ör. tarife) tamamlayıp "Hatalıları yeniden dene"ye basın.</p>
+    </div>
+</section>
+</body>
+</html>

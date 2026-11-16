@@ -19,6 +19,10 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
             """)
     List<Subscription> findBillable(LocalDate periodStart, LocalDate periodEnd);
 
+    java.util.Optional<Subscription> findByExternalRef(String externalRef);
+
+    boolean existsByExternalRef(String externalRef);
+
     @Query("select s from Subscription s join fetch s.plan where s.customer.id = :customerId order by s.id")
     List<Subscription> findByCustomerId(Long customerId);
 }

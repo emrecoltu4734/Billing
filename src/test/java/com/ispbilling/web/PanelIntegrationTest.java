@@ -43,7 +43,7 @@ class PanelIntegrationTest {
 
         @Test
         void apiRequiresAuthentication() throws Exception {
-            mvc.perform(get("/api/plans")).andExpect(status().isUnauthorized());
+            mvc.perform(get("/api/v1/plans")).andExpect(status().isUnauthorized());
         }
 
         @Test

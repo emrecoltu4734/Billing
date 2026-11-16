@@ -24,6 +24,8 @@ public class Payment {
 
     private String reference;
     private OffsetDateTime paidAt;
+    /** Ödeme kuruluşu / müşteri sistemindeki işlem kimliği. Aynı işlem iki kez kaydedilemez. */
+    private String externalRef;
 
     protected Payment() {
     }
@@ -37,10 +39,15 @@ public class Payment {
         this.paidAt = paidAt;
     }
 
+    void setExternalRef(String externalRef) {
+        this.externalRef = externalRef;
+    }
+
     public Long getId() { return id; }
     public Invoice getInvoice() { return invoice; }
     public BigDecimal getAmount() { return amount; }
     public PaymentMethod getMethod() { return method; }
     public String getReference() { return reference; }
     public OffsetDateTime getPaidAt() { return paidAt; }
+    public String getExternalRef() { return externalRef; }
 }

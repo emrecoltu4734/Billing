@@ -38,6 +38,11 @@ public class PlanService {
     }
 
     @Transactional(readOnly = true)
+    public java.util.Optional<Plan> findByCode(String code) {
+        return plans.findByCode(code.trim().toUpperCase());
+    }
+
+    @Transactional(readOnly = true)
     public List<Plan> all() {
         return plans.findAllByOrderByCode();
     }

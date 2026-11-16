@@ -27,6 +27,8 @@ public class Customer {
     private String phone;
     private String email;
     private String address;
+    /** Müşteri (İSS) sistemindeki abone kimliği; entegrasyonla gelen kayıtlarda dolu. */
+    private String externalRef;
 
     @Column(insertable = false, updatable = false)
     @Generated(event = EventType.INSERT)
@@ -46,6 +48,22 @@ public class Customer {
         this.address = address;
     }
 
+    /** Entegrasyondan gelen güncel bilgilerle kaydı günceller (abone no ve tip dışında). */
+    public void update(CustomerType type, String name, String taxId, String taxOffice,
+                       String phone, String email, String address) {
+        this.type = type;
+        this.name = name;
+        this.taxId = taxId;
+        this.taxOffice = taxOffice;
+        this.phone = phone;
+        this.email = email;
+        this.address = address;
+    }
+
+    void setExternalRef(String externalRef) {
+        this.externalRef = externalRef;
+    }
+
     public Long getId() { return id; }
     public String getCustomerNo() { return customerNo; }
     public CustomerType getType() { return type; }
@@ -56,4 +74,5 @@ public class Customer {
     public String getEmail() { return email; }
     public String getAddress() { return address; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
+    public String getExternalRef() { return externalRef; }
 }

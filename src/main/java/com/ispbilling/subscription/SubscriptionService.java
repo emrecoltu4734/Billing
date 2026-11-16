@@ -28,13 +28,23 @@ public class SubscriptionService {
     }
 
     public SubscriptionView create(Long customerId, Long planId, LocalDate startDate) {
+        return create(customerId, planId, startDate, null);
+    }
+
+    /** @param externalRef müşteri sistemindeki abonelik kimliği; panelden/API'den açılanlarda null */
+    public SubscriptionView create(Long customerId, Long planId, LocalDate startDate, String externalRef) {
+        if (externalRef != null && subscriptions.existsByExternalRef(externalRef)) {
+            throw new BusinessException("Bu dış kimlikle bir abonelik zaten var: " + externalRef);
+        }
         Customer customer = customers.findById(customerId)
                 .orElseThrow(() -> new NotFoundException("Abone", customerId));
         Plan plan = plans.findById(planId).orElseThrow(() -> new NotFoundException("Tarife", planId));
         if (!plan.isActive()) {
             throw new BusinessException("Tarife satışa kapalı: " + plan.getCode());
         }
-        return SubscriptionView.of(subscriptions.save(new Subscription(customer, plan, startDate)));
+        Subscription s = new Subscription(customer, plan, startDate);
+        s.setExternalRef(externalRef);
+        return SubscriptionView.of(subscriptions.save(s));
     }
 
     public SubscriptionView suspend(Long id) {
@@ -63,6 +73,11 @@ public class SubscriptionService {
     @Transactional(readOnly = true)
     public List<SubscriptionView> listByCustomer(Long customerId) {
         return subscriptions.findByCustomerId(customerId).stream().map(SubscriptionView::of).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public java.util.Optional<Long> findIdByExternalRef(String externalRef) {
+        return subscriptions.findByExternalRef(externalRef).map(Subscription::getId);
     }
 
     private Subscription find(Long id) {

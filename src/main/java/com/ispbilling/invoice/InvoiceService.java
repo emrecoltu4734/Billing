@@ -31,6 +31,10 @@ public class InvoiceService {
         return InvoiceView.of(i, today(), true);
     }
 
+    public java.util.Optional<Long> findIdByInvoiceNo(String invoiceNo) {
+        return invoices.findByInvoiceNo(invoiceNo).map(Invoice::getId);
+    }
+
     public List<InvoiceView> listByCustomer(Long customerId) {
         LocalDate today = today();
         return invoices.findByCustomerId(customerId).stream().map(i -> InvoiceView.of(i, today, false)).toList();

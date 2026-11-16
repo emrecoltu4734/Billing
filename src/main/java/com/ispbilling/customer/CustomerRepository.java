@@ -7,6 +7,8 @@ import org.springframework.data.jpa.repository.Query;
 
 public interface CustomerRepository extends JpaRepository<Customer, Long> {
 
+    java.util.Optional<Customer> findByExternalRef(String externalRef);
+
     /** Ad, abone no veya TCKN/VKN içinde arar. */
     @Query("""
             select c from Customer c

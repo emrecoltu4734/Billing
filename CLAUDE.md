@@ -8,6 +8,11 @@ mimari bir karar değişirse önce o belgeyi güncelle, bir iş bitince §15'tek
 - **Müşteri sunucusuna kurulan (on-premise), tek firmalı ürün.** Her kurulum tek İSS. tenant_id / RLS yok.
 - Gelir: kurulum + yıllık destek + **kesinleşen fatura başına ücret** → lisans ve kullanım sayacı ticari çekirdek.
 - Kaynak kod müşteriye verilmez; Docker imajı teslim edilir. Müşteriye özel kod dalı açılmaz.
+- **Faturalandırma çekirdeği + entegrasyon:** İSS sistemleri `/api/v1` veya giriş tablolarıyla (`in_*`) besler,
+  import batch core'a işler, fatura günlerinde batch fatura keser. Hazır panel isteğe bağlıdır.
+- **`/api/v1` ve `in_*` tabloları müşteriyle sözleşmedir** ([`docs/ENTEGRASYON.md`](docs/ENTEGRASYON.md) §6):
+  kolon/uç silinmez, adı/anlamı değişmez; yalnızca boş bırakılabilir kolon ve yeni uç eklenir.
+  Bunlarda değişiklik yaparsan ENTEGRASYON.md'yi de güncelle. Core tablolar serbestçe değişebilir.
 - Kurulumda bileşen sayısı az tutulur (uygulama + PostgreSQL). Redis, kuyruk sistemi, React yok (şimdilik).
 
 ## Teknoloji
@@ -29,4 +34,6 @@ BILLING_ADMIN_PASSWORD=demo1234 mvn spring-boot:run -Dspring-boot.run.profiles=d
 - Şema değişikliği yalnızca yeni Flyway migration ile (`V<n>__açıklama.sql`); eski migration düzenlenmez.
 - Kesinleşmiş finansal kayıtlar silinmez/güncellenmez; düzeltme ters kayıtla.
 - Kullanıcıya görünen metinler, hata mesajları ve kod yorumları Türkçe.
+- Import satır işleyicileri core'a yalnızca servisler üzerinden yazar; satır başına ayrı transaction.
+  Import testleri commit ettiği için rollback kullanmaz, `@BeforeEach`/`@AfterEach` ile tabloları temizler.
 - Her davranış değişikliğine test: hesaplama için birim testi, akış için `*IntegrationTest` (MockMvc + gerçek PostgreSQL).

@@ -15,6 +15,9 @@ spring:
   flyway:
     enabled: true
 
+springdoc:
+  paths-to-match: /api/v1/**
+
 billing:
   # Fatura numarası öneki (e-Arşiv formatında 3 karakter: ABC2026000000001)
   invoice-prefix: ISP
@@ -25,3 +28,7 @@ billing:
   admin:
     username: ${BILLING_ADMIN_USER:admin}
     password: ${BILLING_ADMIN_PASSWORD:}
+  # Giriş tablolarını (in_*) işleyen aktarım batch'i
+  import:
+    enabled: ${BILLING_IMPORT_ENABLED:true}
+    interval: ${BILLING_IMPORT_INTERVAL:PT1M}

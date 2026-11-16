@@ -7,3 +7,5 @@ billing:
   admin:
     username: admin
     password: test-sifre
+  import:
+    enabled: false   # testler aktarımı kendileri tetikler

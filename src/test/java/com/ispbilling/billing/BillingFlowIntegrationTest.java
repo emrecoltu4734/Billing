@@ -41,24 +41,24 @@ class BillingFlowIntegrationTest {
 
     @Test
     void fullBillingCycle() throws Exception {
-        long customerId = create("/api/customers", """
+        long customerId = create("/api/v1/customers", """
                 {"type":"INDIVIDUAL","name":"Ayşe Yılmaz","taxId":"12345678901","phone":"05551112233"}
                 """);
-        long fiber = create("/api/plans", """
+        long fiber = create("/api/v1/plans", """
                 {"code":"FIBER100","name":"Fiber 100 Mbps","monthlyFee":300.00,"oivRate":10,"vatRate":20}
                 """);
-        long ip = create("/api/plans", """
+        long ip = create("/api/v1/plans", """
                 {"code":"STATICIP","name":"Sabit IP","monthlyFee":60.00,"oivRate":10,"vatRate":20}
                 """);
-        create("/api/subscriptions", """
+        create("/api/v1/subscriptions", """
                 {"customerId":%d,"planId":%d,"startDate":"2026-10-01"}
                 """.formatted(customerId, fiber));
-        create("/api/subscriptions", """
+        create("/api/v1/subscriptions", """
                 {"customerId":%d,"planId":%d,"startDate":"2026-11-16"}
                 """.formatted(customerId, ip));
 
         // Kasım dönemini faturala
-        mvc.perform(post("/api/bill-runs").contentType(MediaType.APPLICATION_JSON)
+        mvc.perform(post("/api/v1/bill-runs").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"period\":\"2026-11\"}"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.status").value("COMPLETED"))
@@ -67,15 +67,15 @@ class BillingFlowIntegrationTest {
                 .andExpect(jsonPath("$.totalAmount").value(435.60));
 
         // Aynı dönem ikinci kez faturalanamaz
-        mvc.perform(post("/api/bill-runs").contentType(MediaType.APPLICATION_JSON)
+        mvc.perform(post("/api/v1/bill-runs").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"period\":\"2026-11\"}"))
                 .andExpect(status().isConflict());
 
-        JsonNode invoices = read(mvc.perform(get("/api/invoices").param("customerId", "" + customerId))
+        JsonNode invoices = read(mvc.perform(get("/api/v1/invoices").param("customerId", "" + customerId))
                 .andExpect(status().isOk()));
         long invoiceId = invoices.get(0).get("id").asLong();
 
-        mvc.perform(get("/api/invoices/" + invoiceId))
+        mvc.perform(get("/api/v1/invoices/" + invoiceId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.invoiceNo").value(org.hamcrest.Matchers.matchesPattern("ISP2026\\d{9}")))
                 .andExpect(jsonPath("$.issueDate").value("2026-12-01"))
@@ -98,21 +98,21 @@ class BillingFlowIntegrationTest {
 
     @Test
     void terminatedSubscription_notBilledAfterEndDate() throws Exception {
-        long customerId = create("/api/customers", """
+        long customerId = create("/api/v1/customers", """
                 {"type":"CORPORATE","name":"Örnek Ltd. Şti.","taxId":"1234567890","taxOffice":"Kadıköy"}
                 """);
-        long plan = create("/api/plans", """
+        long plan = create("/api/v1/plans", """
                 {"code":"FIBER50","name":"Fiber 50 Mbps","monthlyFee":250.00,"oivRate":10,"vatRate":20}
                 """);
-        long sub = create("/api/subscriptions", """
+        long sub = create("/api/v1/subscriptions", """
                 {"customerId":%d,"planId":%d,"startDate":"2026-09-01"}
                 """.formatted(customerId, plan));
-        mvc.perform(post("/api/subscriptions/" + sub + "/terminate").contentType(MediaType.APPLICATION_JSON)
+        mvc.perform(post("/api/v1/subscriptions/" + sub + "/terminate").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"endDate\":\"2026-10-31\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("TERMINATED"));
 
-        mvc.perform(post("/api/bill-runs").contentType(MediaType.APPLICATION_JSON)
+        mvc.perform(post("/api/v1/bill-runs").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"period\":\"2026-11\"}"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.invoiceCount").value(0));
@@ -120,27 +120,27 @@ class BillingFlowIntegrationTest {
 
     @Test
     void overdueList_showsUnpaidInvoicesPastDueDate() throws Exception {
-        long customerId = create("/api/customers", """
+        long customerId = create("/api/v1/customers", """
                 {"type":"INDIVIDUAL","name":"Mehmet Demir","taxId":"10987654321"}
                 """);
-        long plan = create("/api/plans", """
+        long plan = create("/api/v1/plans", """
                 {"code":"WISP20","name":"Kablosuz 20 Mbps","monthlyFee":200.00,"oivRate":10,"vatRate":20}
                 """);
-        create("/api/subscriptions", """
+        create("/api/v1/subscriptions", """
                 {"customerId":%d,"planId":%d,"startDate":"2026-09-01"}
                 """.formatted(customerId, plan));
 
-        mvc.perform(post("/api/bill-runs").contentType(MediaType.APPLICATION_JSON)
+        mvc.perform(post("/api/v1/bill-runs").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"period\":\"2026-10\"}")).andExpect(status().isCreated());
 
         // Fatura 1 Aralık'ta kesildi, vadesi 16 Aralık: henüz borçlu listesinde değil
-        mvc.perform(get("/api/invoices/overdue"))
+        mvc.perform(get("/api/v1/invoices/overdue"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(0));
 
         // Vadeyi geçmişe çek: artık borçlu listesinde
         jdbc.update("update invoice set due_date = date '2026-11-20' where customer_id = ?", customerId);
-        JsonNode overdue = read(mvc.perform(get("/api/invoices/overdue"))
+        JsonNode overdue = read(mvc.perform(get("/api/v1/invoices/overdue"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].customerName").value("Mehmet Demir"))
@@ -148,13 +148,13 @@ class BillingFlowIntegrationTest {
 
         // Ödeme gelince listeden düşer
         pay(overdue.get(0).get("id").asLong(), "264.00", status().isCreated());
-        mvc.perform(get("/api/invoices/overdue"))
+        mvc.perform(get("/api/v1/invoices/overdue"))
                 .andExpect(jsonPath("$.length()").value(0));
     }
 
     @Test
     void validationErrors_return400() throws Exception {
-        mvc.perform(post("/api/customers").contentType(MediaType.APPLICATION_JSON)
+        mvc.perform(post("/api/v1/customers").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"type\":\"INDIVIDUAL\",\"name\":\"X\",\"taxId\":\"123\"}"))
                 .andExpect(status().isBadRequest());
     }
@@ -166,7 +166,7 @@ class BillingFlowIntegrationTest {
 
     private org.springframework.test.web.servlet.ResultActions pay(long invoiceId, String amount,
                                                                   ResultMatcher expected) throws Exception {
-        return mvc.perform(post("/api/payments").contentType(MediaType.APPLICATION_JSON)
+        return mvc.perform(post("/api/v1/payments").contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"invoiceId":%d,"amount":%s,"method":"ONLINE","reference":"TEST"}
                                 """.formatted(invoiceId, amount)))

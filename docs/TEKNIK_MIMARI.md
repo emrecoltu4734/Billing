@@ -1,12 +1,13 @@
 # ISP360 — Teknik Mimari ve Geliştirme Planı
 
-**Doküman sürümü:** 2.0 (kurulum tabanlı modele uyarlandı)\
+**Doküman sürümü:** 2.1 (entegrasyon modeli: API + giriş tabloları + isteğe bağlı panel)\
 **Ürün:** ISP360\
 **Ürün modeli:** Müşteri sunucusuna kurulan (on-premise), tek firmalı (single-tenant) yazılım\
 **Hedef müşteri:** Türkiye'deki küçük ve orta ölçekli internet servis sağlayıcıları (İSS)\
 **Gelir modeli:** Kurulum + yıllık destek/bakım + kesilen fatura başına ücret\
 **Geliştirme modeli:** Tek geliştirici (+ Claude Code ile ortak geliştirme)\
-**Mimari yaklaşım:** API-first, modüler monolit, tek kurulum = tek İSS
+**Mimari yaklaşım:** API-first faturalandırma çekirdeği, modüler monolit, tek kurulum = tek İSS\
+**Entegrasyon:** REST API + giriş (staging) tabloları + batch; hazır yönetim paneli isteğe bağlı
 
 > Bu doküman projenin ortak çalışma belgesidir. Mimari bir karar değiştiğinde önce bu belge
 > güncellenir, sonra kod. Bir maddenin durumu değiştiğinde §15'teki yol haritası işaretlenir.
@@ -113,6 +114,34 @@ için geçerlidir; **yazılımın kendi güvenliği her zaman ISP360'ın sorumlu
 | KVKK: veri sorumlusu | ✔ | |
 | KVKK: uzaktan destekte veri işleyen | | ✔ (veri işleme sözleşmesi imzalanır) |
 
+### 2.5 Entegrasyon modeli
+
+ISP360 bir **faturalandırma çekirdeğidir**. İSS'nin kendi sistemleri (CRM, abone yönetimi, kendi ekranları,
+ödeme altyapısı) çekirdeği besler; fatura günlerinde faturalandırma batch'i çalışır ve faturalar
+aboneye gider. Bu, büyük operatörlerdeki BSCS benzeri modelin küçük ölçekli karşılığıdır.
+
+| Kanal | Kim kullanır | Ne için |
+|---|---|---|
+| **REST API (`/api/v1`)** | Kendi ekranı/yazılım ekibi olan İSS | Anlık işlemler, sonucun hemen dönmesi |
+| **Giriş tabloları (`in_*`) + import batch** | Mevcut sistemi olan İSS, ilk veri yükleme | Toplu ve düzenli besleme |
+| **Hazır yönetim paneli** | Yazılım ekibi olmayan küçük İSS | Tüm işlemler ekrandan |
+
+Üç kanal da **aynı servis katmanından** geçer; iş kuralları tek yerdedir.
+
+**Temel kural: müşteri sistemleri core tablolara doğrudan yazmaz ve okumaz.**
+
+- Core tablo yapısı ürün geliştikçe değişebilir. Müşteriye karşı sabit tutulan sözleşme yalnızca
+  `/api/v1` ve `in_*` tablolarıdır. Sözleşme kuralları: [ENTEGRASYON.md §6](ENTEGRASYON.md#6-sözleşme-ve-sürüm-kuralları).
+- Giriş tablosu satırları import batch'inde doğrulanır. Hatalı veri core'a ve faturaya girmez;
+  hata kodu ve açıklaması aynı satıra geri yazılır.
+- Faturada sorun çıktığında hatanın beslenen veriden mi motordan mı kaynaklandığı satır kayıtlarından
+  izlenebilir. Bu, müşteriyle anlaşmazlıklarda ISP360'ı korur.
+- Müşterinin entegrasyon veritabanı kullanıcısı yalnızca `in_*` tablolarına `SELECT, INSERT` yetkisine sahiptir.
+- Her kayıt müşterinin kendi kimliği (`external_ref`) ile gelir. Ödemelerde aynı kimlik ikinci kez
+  işlenmez (`DUPLICATE`), böylece ödeme bildirimleri güvenle tekrar gönderilebilir.
+
+Müşteriye verilecek ayrıntılı rehber: **[ENTEGRASYON.md](ENTEGRASYON.md)**.
+
 ------------------------------------------------------------------------
 
 ## 3. Mimari kararlar
@@ -126,8 +155,10 @@ için geçerlidir; **yazılımın kendi güvenliği her zaman ISP360'ın sorumlu
 | Veri erişimi | Spring Data JPA; rapor ve toplu işlerde JdbcClient (düz SQL) | ✔ Uygulandı |
 | Migration | Flyway, yalnızca ileriye dönük ve geriye uyumlu | ✔ Uygulandı |
 | Güvenlik | Spring Security: panel form girişi, API HTTP Basic | ✔ Uygulandı |
-| API | REST + OpenAPI (springdoc) | ◻ OpenAPI eklenecek |
-| Arka plan işleri | Spring Scheduler + `JOB_EXECUTION` tablosu | ◻ |
+| API | REST, `/api/v1` sürümlü, OpenAPI (springdoc, `/swagger-ui.html`) | ✔ Uygulandı |
+| Toplu entegrasyon | Giriş tabloları (`in_*`) + import batch (her dakika, satır başına transaction) | ✔ Uygulandı |
+| Yönetim paneli rolü | İsteğe bağlı hazır ekran; API ile aynı servisleri kullanır | ✔ Uygulandı |
+| Arka plan işleri | Spring Scheduler (✔ import batch) + `JOB_EXECUTION` tablosu (◻) | Kısmen |
 | Güvenilir olay iletimi | PostgreSQL Outbox (ayrı mesaj kuyruğu yok) | ◻ |
 | Paketleme | Docker imajı + Docker Compose | ◻ |
 | Lisans | Ed25519 imzalı lisans dosyası, çevrimdışı doğrulanır | ◻ |
@@ -177,7 +208,10 @@ flowchart TB
         RAD[RADIUS / OSS]
     end
     USER[İSS personeli] --> PROXY --> PANEL
-    PROXY --> API
+    CRMSYS[İSS'nin kendi sistemleri<br/>CRM · ekranlar · ödeme] --> PROXY --> API
+    CRMSYS -->|INSERT| INTAB[(Giriş tabloları in_*)]
+    INTAB --> IMPORT[Import batch]
+    IMPORT --> CORE
     PANEL --> CORE
     API --> CORE
     CORE --> DB
@@ -194,8 +228,9 @@ flowchart TB
 
 ### İşlem akışı
 
-1. İSS personeli panelden müşteri kaydı oluşturur.
-2. Müşteriye tarife atanır, abonelik kaydı oluşturulur.
+1. Abone ve abonelik İSS'nin kendi sisteminden API veya giriş tablolarıyla gelir
+   (ya da İSS personeli hazır panelden girer).
+2. Giriş tablosu satırları import batch'inde doğrulanır ve core'a işlenir; sonuç satıra yazılır.
 3. Integration modülü RADIUS/OSS'a aktivasyon komutunu outbox üzerinden gönderir.
 4. Dönem sonunda Billing Run çalışır, ücret kalemleri hesaplanır.
 5. Fatura taslakları oluşur, kontrol edilip kesinleştirilir; cari hesaba borç kaydı düşer.
@@ -281,6 +316,12 @@ denetim hakkı, cezai şart).
 | `invoice` / `invoice_line` | Faturalar ve kalemleri |
 | `payment` | Tahsilatlar (şu an tek faturaya bağlı) |
 | `app_user` | Panel kullanıcıları |
+| `in_customer` | Giriş tablosu: abone ekleme/güncelleme |
+| `in_subscription_event` | Giriş tablosu: abonelik ACTIVATE / SUSPEND / RESUME / TERMINATE |
+| `in_payment` | Giriş tablosu: tahsilat (işlem kimliğiyle tekilleştirilir) |
+
+`customer`, `subscription` ve `payment` tablolarında müşteri sistemindeki kimlik `external_ref`
+(UNIQUE) kolonunda tutulur.
 
 ### 6.2 Eklenecek tablolar
 
@@ -442,7 +483,7 @@ adapter'a iletir, başarılıysa tamamlandı olarak işaretler, başarısızsa a
 
 ## 9. REST API tasarımı
 
-Mevcut uçlar `/api/...` altındadır; sürümleme için `/api/v1/...` önekine geçilecektir (Faz 1).
+Tüm uçlar `/api/v1` altındadır ve müşteriyle sözleşmedir. Canlı doküman `/swagger-ui.html`.
 
 | Method | Endpoint | İşlem | Durum |
 |---|---|---|---|
@@ -460,6 +501,9 @@ Mevcut uçlar `/api/...` altındadır; sürümleme için `/api/v1/...` önekine 
 | GET | `/api/v1/invoices` | Faturalar | ✔ |
 | POST | `/api/v1/payments` | Tahsilat kaydet | ✔ |
 | POST | `/api/v1/webhooks/payments/{provider}` | Ödeme kuruluşu bildirimi | ◻ |
+| POST | `/api/v1/imports/run` | Giriş tablolarını hemen işle | ✔ |
+| GET | `/api/v1/imports/status` | Giriş tablosu durumları | ✔ |
+| POST | `/api/v1/imports/{tablo}/retry` | Hatalı satırları yeniden kuyruğa al | ✔ |
 | GET | `/api/v1/license/usage` | Kullanım raporu | ◻ |
 
 Finansal POST işlemlerinde `Idempotency-Key` başlığı desteklenir. Ödeme bildirimleri sağlayıcı işlem
@@ -575,6 +619,10 @@ veya ek ücretlidir.
 | Billing Run'ın iki kez çalışması | Mükerrer ücret oluşmaması | ✔ |
 | Fazla ödeme | Reddedilmesi | ✔ |
 | Panelde yetkisiz erişim | Giriş sayfasına yönlendirme | ✔ |
+| Giriş tablosunda hatalı satır | Satır ERROR, diğerleri işlenir, core'da iz yok | ✔ |
+| Aynı ödeme kimliğinin tekrar gelmesi | DUPLICATE, tek ödeme kaydı | ✔ |
+| Abone ve aboneliğinin aynı aktarımda gelmesi | Bağımlılık sırasıyla doğru işlenmesi | ✔ |
+| Entegrasyon kullanıcısının core tabloya erişimi | Yetki hatası | ✔ (elle doğrulandı) |
 | Ay ortasında tarife değişikliği | Eski/yeni tarife ayrımı | ◻ |
 | Vergi oranının dönem ortasında değişmesi | Tarihe göre doğru oran | ◻ |
 | Ödeme webhook'unun tekrarlanması | Tek ödeme kaydı | ◻ |
@@ -634,59 +682,67 @@ Tek geliştirici için hedef takvimdir. Entegrasyon, mevzuat ve pilot testleri s
 - [x] Demo verisi
 - [x] Birim ve uçtan uca testler
 
-### Faz 1 — Kurulabilir ürün (1–2 hafta)
+### Faz 1 — Entegrasyon sözleşmesi ✔
+
+- [x] Giriş tabloları: `in_customer`, `in_subscription_event`, `in_payment`
+- [x] Import batch: satır başına transaction, bağımlılık sırası, hata kodu/açıklaması, tekrar koruması
+- [x] Zamanlanmış çalıştırma + elle çalıştırma + hatalıları yeniden deneme (panel ve API)
+- [x] `external_ref` eşlemesi (abone, abonelik, ödeme)
+- [x] API'nin `/api/v1` önekine taşınması, OpenAPI dokümanı
+- [x] Müşteriye verilecek entegrasyon rehberi ([ENTEGRASYON.md](ENTEGRASYON.md))
+
+### Faz 2 — Batch faturalandırma (2–3 hafta)
+
+- [ ] Bill cycle tanımları (ör. her ayın 1'i ve 15'i); aboneye bill cycle atanması
+- [ ] Zamanlanmış otomatik Billing Run (bill cycle gününde)
+- [ ] Parçalı (chunk) işleme; hatalı abone run'ı durdurmaz, kaldığı yerden devam eder
+- [ ] Billing Item + fatura taslağı → kontrol → kesinleştirme
+- [ ] Fatura çıktısı: PDF, toplu baskı/gönderim dosyası, e-posta ile gönderim
+- [ ] Çıkış (out_*) tabloları veya API ile kesinleşen faturaların müşteri sistemine geri verilmesi
+- [ ] `job_execution` tablosu ve panelde iş geçmişi
+
+### Faz 3 — Kurulabilir ve lisanslı ürün (1–2 hafta)
 
 - [ ] Dockerfile + `compose.yaml` + `install.sh` / `update.sh` / `backup.sh`
-- [ ] Ayrı migration ve uygulama veritabanı kullanıcıları
+- [ ] Ayrı migration, uygulama ve entegrasyon veritabanı kullanıcıları (kurulumda otomatik)
 - [ ] Lisans dosyası doğrulama (Ed25519) ve lisans ekranı
-- [ ] `license_usage` sayacı ve kullanım raporu ekranı
-- [ ] Rol yönetimi ve kullanıcı yönetimi ekranı
+- [ ] `license_usage` sayacı, hash zinciri ve kullanım raporu ekranı
+- [ ] Rol ve kullanıcı yönetimi ekranı; entegrasyon kullanıcısı rolü
 - [ ] Hatalı girişte kilitleme, şifre değiştirme
 - [ ] Audit log altyapısı
 - [ ] Sürüm bilgisi, `/actuator/health`, JSON loglar, destek paketi
-- [ ] API'nin `/api/v1` önekine taşınması
 - [ ] Paket adının `com.isp360` olarak değiştirilmesi
 
-### Faz 2 — CRM ve abonelik (2 hafta)
+### Faz 4 — Katalog ve abonelik derinliği (2 hafta)
 
-- [ ] Abone bilgisi düzenleme
-- [ ] Adres yönetimi
+- [ ] Abone bilgisi düzenleme (panel), adres yönetimi
 - [ ] Tarife sürümleme (geçerlilik tarihli fiyat)
 - [ ] Abonelik geçmişi
-- [ ] Tarife değişikliği
-
-### Faz 3 — Billing Engine (3 hafta)
-
-- [ ] Hesaplama bileşenlerine ayrıştırma (§7.3)
-- [ ] Kıst yöntemi yapılandırması (ACTUAL_DAYS / FIXED_30)
+- [ ] Tarife değişikliği (`CHANGE_PLAN` olayı) ve dönem bölme
+- [ ] Hesaplama bileşenlerine ayrıştırma (§7.3), kıst yöntemi yapılandırması
 - [ ] Tarihe bağlı vergi kuralları
-- [ ] Tarife değişikliğinde dönem bölme
 - [ ] Kampanya ve indirim
-- [ ] Billing Item + fatura taslağı
-- [ ] Hatalı abonede devam eden, kaldığı yerden sürdürülebilir Billing Run
-- [ ] Zamanlanmış otomatik Billing Run
 
-### Faz 4 — Finans (2 hafta)
+### Faz 5 — Finans (2 hafta)
 
-- [ ] Fatura kesinleştirme, numaralandırma, hash zinciri
 - [ ] İade / iptal faturası
 - [ ] Ledger (cari hesap)
-- [ ] Toplu ödeme ve dağıtım, avans
+- [ ] Faturasız (cari hesaba) ödeme, toplu ödeme dağıtımı, avans (`in_payment.customer_external_ref`)
 - [ ] İade ve mahsup
-- [ ] Idempotency-Key
+- [ ] API'de Idempotency-Key
 - [ ] Mutabakat raporu
 
-### Faz 5 — Entegrasyon (2–3 hafta)
+### Faz 6 — Dış entegrasyonlar (2–3 hafta)
 
 - [ ] Adapter altyapısı + outbox + yeniden deneme
+- [ ] e-Belge özel entegratör bağlantısı (e-Arşiv / e-Fatura)
 - [ ] Ödeme kuruluşu (ödeme linki + webhook)
 - [ ] SMS ve e-posta bildirimleri
 - [ ] RADIUS kısıtlama / açma
-- [ ] e-Belge özel entegratör bağlantısı
 
-### Faz 6 — Pilot (2–3 hafta)
+### Faz 7 — Pilot (2–3 hafta)
 
-- [ ] Excel / mevcut sistemden veri aktarımı aracı
+- [ ] Excel / mevcut sistemden ilk veri yükleme (giriş tabloları üzerinden)
 - [ ] Gelir, tahsilat ve abone raporları
 - [ ] Performans testi (10.000 abonelik)
 - [ ] Güvenlik testi
@@ -730,10 +786,12 @@ ISP360'ın kendisinin özel entegratör olması kapsam dışıdır.
 | Panel | Thymeleaf |
 | Veritabanı | PostgreSQL 16, Flyway |
 | Paketleme | Docker Compose |
+| Entegrasyon | REST API `/api/v1` + giriş tabloları `in_*` + import batch; core tablolar yalnızca ISP360'ın |
+| Yönetim paneli | İsteğe bağlı hazır ekran (yazılım ekibi olmayan İSS'ler için) |
 | Ağ yönetimi | RADIUS/OSS adapter'ları |
 | Finansal model | Billing Engine + taslak/kesin fatura + ledger |
 | Olay iletimi | Transactional Outbox |
-| İlk hedef | Kurulabilir, lisanslı, faturayı sayan çekirdek ürün + pilot |
+| İlk hedef | Beslenebilen, batch ile fatura kesen, kurulabilir ve lisanslı çekirdek + pilot |
 
 ### Açık sorular
 
@@ -754,5 +812,5 @@ kıst ücretleri, tarife değişikliklerini, finansal hareketleri ve entegrasyon
 
 Geliştirmede öncelik sırası:
 
-**Kurulabilir ve lisanslı ürün → CRM/abonelik → Billing Engine → Fatura ve ledger → Tahsilat →
-Entegrasyon → Pilot → Portal.**
+**Entegrasyon sözleşmesi → Batch faturalandırma ve fatura çıktısı → Kurulabilir ve lisanslı ürün →
+Katalog/abonelik derinliği → Finans → Dış entegrasyonlar → Pilot → Portal.**

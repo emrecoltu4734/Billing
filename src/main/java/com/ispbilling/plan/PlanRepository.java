@@ -7,6 +7,8 @@ import java.util.List;
 public interface PlanRepository extends JpaRepository<Plan, Long> {
     boolean existsByCode(String code);
 
+    java.util.Optional<Plan> findByCode(String code);
+
     List<Plan> findAllByOrderByCode();
 
     List<Plan> findByActiveTrueOrderByCode();
