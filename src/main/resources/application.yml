@@ -5,6 +5,9 @@ spring:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/billing}
     username: ${DB_USER:billing}
     password: ${DB_PASSWORD:billing}
+  mvc:
+    format:
+      date: iso
   jpa:
     open-in-view: false
     hibernate:
@@ -17,3 +20,8 @@ billing:
   invoice-prefix: ISP
   # Son ödeme günü = fatura tarihi + bu kadar gün
   payment-term-days: 15
+  # İlk açılışta hiç kullanıcı yoksa bu yönetici oluşturulur.
+  # Şifre verilmezse rastgele üretilip loga yazılır.
+  admin:
+    username: ${BILLING_ADMIN_USER:admin}
+    password: ${BILLING_ADMIN_PASSWORD:}

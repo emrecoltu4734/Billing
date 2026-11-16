@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::section}, 'plans')}">
+<head><title>Tarifeler · ISP Billing</title></head>
+<body>
+<section>
+    <header class="page-head"><h1>Tarifeler</h1></header>
+    <div class="card">
+        <p class="empty" th:if="${plans.isEmpty()}">Henüz tarife yok. Aşağıdan ilk tarifenizi ekleyin.</p>
+        <table th:unless="${plans.isEmpty()}">
+            <thead><tr><th>Kod</th><th>Ad</th><th class="num">Aylık ücret</th><th class="num">ÖİV</th><th class="num">KDV</th>
+                <th class="num">Abone ödeyecek</th><th>Durum</th><th></th></tr></thead>
+            <tbody>
+            <tr th:each="p : ${plans}" th:classappend="${!p.active} ? 'row-muted'">
+                <td class="mono" th:text="${p.code}"></td>
+                <td th:text="${p.name}"></td>
+                <td class="num" th:text="${@fmt.money(p.monthlyFee)}"></td>
+                <td class="num" th:text="${@fmt.percent(p.oivRate)}"></td>
+                <td class="num" th:text="${@fmt.percent(p.vatRate)}"></td>
+                <td class="num" th:text="${@fmt.money(@fmt.grossFee(p))}"></td>
+                <td><span class="badge" th:classappend="${p.active} ? 'badge-green' : 'badge-muted'"
+                          th:text="${p.active} ? 'Satışta' : 'Satışa kapalı'"></span></td>
+                <td class="row-actions">
+                    <form th:action="@{/plans/{id}/active(id=${p.id})}" method="post">
+                        <input type="hidden" name="active" th:value="${!p.active}">
+                        <button class="btn btn-small" type="submit" th:text="${p.active} ? 'Satışa kapat' : 'Satışa aç'"></button>
+                    </form>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <form class="card form" th:action="@{/plans}" method="post">
+        <h2>Yeni tarife</h2>
+        <div class="form-row">
+            <label>Kod <input name="code" th:value="${param.code}" required maxlength="50" placeholder="FIBER100"></label>
+            <label class="grow">Ad <input name="name" th:value="${param.name}" required maxlength="200" placeholder="Fiber 100 Mbps"></label>
+        </div>
+        <div class="form-row">
+            <label>Aylık ücret (vergiler hariç, ₺)
+                <input name="monthlyFee" th:value="${param.monthlyFee}" required inputmode="decimal" placeholder="300,00"></label>
+            <label>ÖİV oranı (%) <input name="oivRate" th:value="${param.oivRate} ?: '10'" required inputmode="decimal"></label>
+            <label>KDV oranı (%) <input name="vatRate" th:value="${param.vatRate} ?: '20'" required inputmode="decimal"></label>
+        </div>
+        <p class="hint">Vergi oranlarını canlıya çıkmadan önce mali müşavirinizle doğrulayın. Mevcut tarifenin fiyatı değişecekse yeni tarife açıp eskisini satışa kapatın.</p>
+        <div class="form-actions"><button type="submit" class="btn btn-primary">Tarife ekle</button></div>
+    </form>
+</section>
+</body>
+</html>

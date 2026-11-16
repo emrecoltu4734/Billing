@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::section}, 'invoices')}">
+<head><title th:text="|${invoice.invoiceNo} · ISP Billing|">Fatura</title></head>
+<body>
+<section>
+    <header class="page-head">
+        <div>
+            <p class="crumb"><a th:href="@{/invoices}">Faturalar</a> / <span class="mono" th:text="${invoice.invoiceNo}"></span></p>
+            <h1>
+                <span th:text="|${@fmt.period(invoice.periodStart)} faturası|"></span>
+                <span class="badge" th:classappend="${'badge-' + @fmt.tone(invoice.status)}" th:text="${@fmt.label(invoice.status)}"></span>
+                <span class="badge badge-red" th:if="${invoice.overdue}">Gecikmiş</span>
+            </h1>
+        </div>
+    </header>
+
+    <div class="card">
+        <dl class="facts">
+            <div><dt>Abone</dt><dd><a th:href="@{/customers/{id}(id=${invoice.customerId})}" th:text="${invoice.customerName}"></a>
+                <span class="muted mono" th:text="${invoice.customerNo}"></span></dd></div>
+            <div><dt>Dönem</dt><dd th:text="|${@fmt.date(invoice.periodStart)} – ${@fmt.date(invoice.periodEnd)}|"></dd></div>
+            <div><dt>Fatura tarihi</dt><dd th:text="${@fmt.date(invoice.issueDate)}"></dd></div>
+            <div><dt>Son ödeme</dt><dd th:text="${@fmt.date(invoice.dueDate)}" th:classappend="${invoice.overdue} ? 'text-danger'"></dd></div>
+        </dl>
+    </div>
+
+    <div class="card">
+        <table>
+            <thead><tr><th>Açıklama</th><th class="num">Gün</th><th class="num">Aylık ücret</th><th class="num">Tutar</th>
+                <th class="num">ÖİV</th><th class="num">KDV</th><th class="num">Toplam</th></tr></thead>
+            <tbody>
+            <tr th:each="l : ${invoice.lines}">
+                <td th:text="${l.description}"></td>
+                <td class="num" th:text="|${l.billedDays}/${l.periodDays}|"></td>
+                <td class="num" th:text="${@fmt.money(l.unitPrice)}"></td>
+                <td class="num" th:text="${@fmt.money(l.netAmount)}"></td>
+                <td class="num" th:text="${@fmt.money(l.oivAmount)}" th:title="${@fmt.percent(l.oivRate)}"></td>
+                <td class="num" th:text="${@fmt.money(l.vatAmount)}" th:title="${@fmt.percent(l.vatRate)}"></td>
+                <td class="num" th:text="${@fmt.money(l.totalAmount)}"></td>
+            </tr>
+            </tbody>
+        </table>
+        <dl class="totals">
+            <div><dt>Ara toplam</dt><dd th:text="${@fmt.money(invoice.netAmount)}"></dd></div>
+            <div><dt>ÖİV</dt><dd th:text="${@fmt.money(invoice.oivAmount)}"></dd></div>
+            <div><dt>KDV</dt><dd th:text="${@fmt.money(invoice.vatAmount)}"></dd></div>
+            <div class="grand"><dt>Genel toplam</dt><dd th:text="${@fmt.money(invoice.totalAmount)}"></dd></div>
+            <div><dt>Ödenen</dt><dd th:text="${@fmt.money(invoice.paidAmount)}"></dd></div>
+            <div class="grand" th:classappend="${invoice.openAmount.signum() > 0} ? 'text-danger'">
+                <dt>Kalan</dt><dd th:text="${@fmt.money(invoice.openAmount)}"></dd></div>
+        </dl>
+    </div>
+
+    <div class="card">
+        <div class="card-head"><h2>Tahsilatlar</h2></div>
+        <p class="empty" th:if="${payments.isEmpty()}">Bu faturaya henüz ödeme yapılmadı.</p>
+        <table th:unless="${payments.isEmpty()}">
+            <thead><tr><th>Tarih</th><th>Yöntem</th><th>Referans</th><th class="num">Tutar</th></tr></thead>
+            <tbody>
+            <tr th:each="p : ${payments}">
+                <td th:text="${@fmt.dateTime(p.paidAt)}"></td>
+                <td th:text="${@fmt.label(p.method)}"></td>
+                <td th:text="${p.reference ?: '—'}"></td>
+                <td class="num" th:text="${@fmt.money(p.amount)}"></td>
+            </tr>
+            </tbody>
+        </table>
+        <form class="inline-form add-sub" th:if="${invoice.openAmount.signum() > 0 and invoice.status.name() != 'CANCELLED'}"
+              th:action="@{/invoices/{id}/payments(id=${invoice.id})}" method="post">
+            <label>Tutar (₺) <input name="amount" required inputmode="decimal" th:value="${@fmt.amountInput(invoice.openAmount)}"></label>
+            <label>Yöntem
+                <select name="method" required>
+                    <option th:each="m : ${methods}" th:value="${m}" th:text="${@fmt.label(m)}"></option>
+                </select>
+            </label>
+            <label>Referans <input name="reference" maxlength="100" placeholder="Dekont no vb."></label>
+            <button class="btn btn-primary" type="submit">Tahsilat kaydet</button>
+        </form>
+    </div>
+</section>
+</body>
+</html>

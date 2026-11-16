@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::section}, 'dashboard')}">
+<head><title>Özet · ISP Billing</title></head>
+<body>
+<section>
+    <header class="page-head">
+        <div>
+            <h1>Özet</h1>
+            <p class="muted" th:text="${@fmt.date(@fmt.today())}"></p>
+        </div>
+        <div class="actions">
+            <a class="btn" th:href="@{/customers/new}">+ Yeni abone</a>
+            <a class="btn btn-primary" th:href="@{/bill-runs}">Fatura kes</a>
+        </div>
+    </header>
+
+    <div class="stats">
+        <div class="stat">
+            <div class="stat-label">Aktif abonelik</div>
+            <div class="stat-value" th:text="${summary.activeSubscriptions}">0</div>
+            <div class="stat-sub"><span th:text="${summary.suspendedSubscriptions}">0</span> kısıtlı ·
+                <span th:text="${summary.customerCount}">0</span> abone</div>
+        </div>
+        <div class="stat">
+            <div class="stat-label">Aylık tekrarlayan gelir</div>
+            <div class="stat-value" th:text="${@fmt.money(summary.monthlyRecurringRevenue)}">0</div>
+            <div class="stat-sub">Vergiler hariç</div>
+        </div>
+        <div class="stat">
+            <div class="stat-label">Bu ay tahsil edilen</div>
+            <div class="stat-value" th:text="${@fmt.money(summary.collectedThisMonth)}">0</div>
+            <div class="stat-sub">Açık alacak <span th:text="${@fmt.money(summary.openReceivables)}"></span></div>
+        </div>
+        <div class="stat" th:classappend="${summary.overdueInvoiceCount > 0} ? 'stat-alert'">
+            <div class="stat-label">Vadesi geçmiş</div>
+            <div class="stat-value" th:text="${@fmt.money(summary.overdueAmount)}">0</div>
+            <div class="stat-sub"><span th:text="${summary.overdueInvoiceCount}">0</span> fatura</div>
+        </div>
+    </div>
+
+    <div class="grid-2">
+        <div class="card">
+            <div class="card-head">
+                <h2>Borçlular</h2>
+                <a th:href="@{/overdue}">Tümü →</a>
+            </div>
+            <p class="empty" th:if="${overdue.isEmpty()}">Vadesi geçmiş fatura yok.</p>
+            <table th:unless="${overdue.isEmpty()}">
+                <thead><tr><th>Abone</th><th>Vade</th><th class="num">Kalan</th></tr></thead>
+                <tbody>
+                <tr th:each="i : ${overdue}">
+                    <td><a th:href="@{/customers/{id}(id=${i.customerId})}" th:text="${i.customerName}"></a></td>
+                    <td th:text="${@fmt.date(i.dueDate)}"></td>
+                    <td class="num"><a th:href="@{/invoices/{id}(id=${i.id})}" th:text="${@fmt.money(i.openAmount)}"></a></td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="card">
+            <div class="card-head">
+                <h2>Son fatura dönemleri</h2>
+                <a th:href="@{/bill-runs}">Tümü →</a>
+            </div>
+            <p class="empty" th:if="${billRuns.isEmpty()}">Henüz fatura kesilmedi.</p>
+            <table th:unless="${billRuns.isEmpty()}">
+                <thead><tr><th>Dönem</th><th class="num">Fatura</th><th class="num">Tutar</th></tr></thead>
+                <tbody>
+                <tr th:each="r : ${billRuns}">
+                    <td th:text="${@fmt.period(r.periodStart)}"></td>
+                    <td class="num" th:text="${r.invoiceCount}"></td>
+                    <td class="num" th:text="${@fmt.money(r.totalAmount)}"></td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+</body>
+</html>

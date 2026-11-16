@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.OffsetDateTime;
+import java.util.List;
 
 @Service
 public class PaymentService {
@@ -26,12 +27,17 @@ public class PaymentService {
 
     /** Faturayı kilitleyerek tahsilat uygular; aynı anda gelen iki ödeme bakiyeyi aşamaz. */
     @Transactional
-    public Payment pay(Long invoiceId, BigDecimal amount, PaymentMethod method, String reference) {
+    public PaymentView pay(Long invoiceId, BigDecimal amount, PaymentMethod method, String reference) {
         Invoice invoice = em.find(Invoice.class, invoiceId, LockModeType.PESSIMISTIC_WRITE);
         if (invoice == null) {
             throw new NotFoundException("Fatura", invoiceId);
         }
         invoice.applyPayment(amount);
-        return payments.save(new Payment(invoice, amount, method, reference, OffsetDateTime.now(clock)));
+        return PaymentView.of(payments.save(new Payment(invoice, amount, method, reference, OffsetDateTime.now(clock))));
+    }
+
+    @Transactional(readOnly = true)
+    public List<PaymentView> listByInvoice(Long invoiceId) {
+        return payments.findByInvoiceId(invoiceId).stream().map(PaymentView::of).toList();
     }
 }

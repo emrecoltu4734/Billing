@@ -33,6 +33,10 @@ public class Plan {
         this.vatRate = vatRate;
     }
 
+    public void setActive(boolean active) {
+        this.active = active;
+    }
+
     public Long getId() { return id; }
     public String getCode() { return code; }
     public String getName() { return name; }

@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.util.stream.Collectors;
 
-@RestControllerAdvice
+@RestControllerAdvice(annotations = org.springframework.web.bind.annotation.RestController.class)
 public class ApiExceptionHandler {
 
     @ExceptionHandler(NotFoundException.class)

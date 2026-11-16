@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="tr" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:fragment="page(title, content, nav)">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:replace="${title}">ISP Billing</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div class="shell">
+    <aside class="sidebar">
+        <a class="brand" th:href="@{/}"><span class="brand-mark">₺</span> ISP Billing</a>
+        <nav>
+            <a th:href="@{/}" th:classappend="${nav == 'dashboard'} ? 'active'">Özet</a>
+            <a th:href="@{/customers}" th:classappend="${nav == 'customers'} ? 'active'">Aboneler</a>
+            <a th:href="@{/invoices}" th:classappend="${nav == 'invoices'} ? 'active'">Faturalar</a>
+            <a th:href="@{/overdue}" th:classappend="${nav == 'overdue'} ? 'active'">Borçlular</a>
+            <a th:href="@{/bill-runs}" th:classappend="${nav == 'bill-runs'} ? 'active'">Fatura dönemleri</a>
+            <a th:href="@{/plans}" th:classappend="${nav == 'plans'} ? 'active'">Tarifeler</a>
+        </nav>
+        <div class="sidebar-foot">
+            <span class="user" sec:authentication="name">admin</span>
+            <form th:action="@{/logout}" method="post">
+                <button type="submit" class="link-button">Çıkış</button>
+            </form>
+        </div>
+    </aside>
+    <main class="content">
+        <div class="flash flash-success" th:if="${success}" th:text="${success}" role="status"></div>
+        <div class="flash flash-error" th:if="${error}" th:text="${error}" role="alert"></div>
+        <div class="flash flash-error" th:if="${errors}" role="alert">
+            <ul><li th:each="e : ${errors}" th:text="${e}"></li></ul>
+        </div>
+        <th:block th:replace="${content}"></th:block>
+    </main>
+</div>
+</body>
+</html>

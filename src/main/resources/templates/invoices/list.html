@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::section}, 'invoices')}">
+<head><title>Faturalar · ISP Billing</title></head>
+<body>
+<section>
+    <header class="page-head"><h1>Faturalar</h1></header>
+    <nav class="tabs">
+        <a th:href="@{/invoices(filter='open')}" th:classappend="${filter == 'open'} ? 'active'">Ödenmemiş</a>
+        <a th:href="@{/invoices(filter='paid')}" th:classappend="${filter == 'paid'} ? 'active'">Ödenmiş</a>
+        <a th:href="@{/invoices(filter='all')}" th:classappend="${filter == 'all'} ? 'active'">Tümü</a>
+    </nav>
+    <div class="card">
+        <p class="empty" th:if="${page.isEmpty()}">Bu filtrede fatura yok.</p>
+        <table th:unless="${page.isEmpty()}">
+            <thead><tr><th>Fatura no</th><th>Abone</th><th>Dönem</th><th>Son ödeme</th><th class="num">Tutar</th><th class="num">Kalan</th><th>Durum</th></tr></thead>
+            <tbody>
+            <tr th:each="i : ${page.content}">
+                <td><a class="mono" th:href="@{/invoices/{id}(id=${i.id})}" th:text="${i.invoiceNo}"></a></td>
+                <td><a th:href="@{/customers/{id}(id=${i.customerId})}" th:text="${i.customerName}"></a></td>
+                <td th:text="${@fmt.period(i.periodStart)}"></td>
+                <td th:text="${@fmt.date(i.dueDate)}" th:classappend="${i.overdue} ? 'text-danger'"></td>
+                <td class="num" th:text="${@fmt.money(i.totalAmount)}"></td>
+                <td class="num" th:text="${@fmt.money(i.openAmount)}"></td>
+                <td>
+                    <span class="badge" th:classappend="${'badge-' + @fmt.tone(i.status)}" th:text="${@fmt.label(i.status)}"></span>
+                    <span class="badge badge-red" th:if="${i.overdue}">Gecikmiş</span>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+    <nav class="pager" th:if="${page.totalPages > 1}">
+        <a class="btn btn-ghost" th:if="${page.hasPrevious()}" th:href="@{/invoices(filter=${filter},page=${page.number - 1})}">← Önceki</a>
+        <span class="muted" th:text="|Sayfa ${page.number + 1} / ${page.totalPages}|"></span>
+        <a class="btn btn-ghost" th:if="${page.hasNext()}" th:href="@{/invoices(filter=${filter},page=${page.number + 1})}">Sonraki →</a>
+    </nav>
+</section>
+</body>
+</html>

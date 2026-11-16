@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::section}, 'customers')}">
+<head><title>Yeni abone · ISP Billing</title></head>
+<body>
+<section>
+    <header class="page-head">
+        <h1>Yeni abone</h1>
+        <a class="btn btn-ghost" th:href="@{/customers}">Vazgeç</a>
+    </header>
+    <form class="card form" th:action="@{/customers}" method="post">
+        <div class="form-row">
+            <label>Abone tipi
+                <select name="type" required>
+                    <option value="INDIVIDUAL">Bireysel</option>
+                    <option value="CORPORATE" th:selected="${param.type != null and param.type[0] == 'CORPORATE'}">Kurumsal</option>
+                </select>
+            </label>
+            <label class="grow">Ad soyad / Unvan
+                <input name="name" th:value="${param.name}" required maxlength="200">
+            </label>
+        </div>
+        <div class="form-row">
+            <label>TCKN / VKN
+                <input name="taxId" th:value="${param.taxId}" required inputmode="numeric" pattern="\d{10,11}"
+                       title="TCKN 11, VKN 10 haneli" maxlength="11">
+            </label>
+            <label>Vergi dairesi
+                <input name="taxOffice" th:value="${param.taxOffice}" maxlength="100">
+            </label>
+        </div>
+        <div class="form-row">
+            <label>Telefon <input name="phone" th:value="${param.phone}" type="tel" maxlength="20"></label>
+            <label>E-posta <input name="email" th:value="${param.email}" type="email" maxlength="200"></label>
+        </div>
+        <label>Adres <textarea name="address" rows="2" maxlength="500" th:text="${param.address}"></textarea></label>
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Kaydet</button>
+        </div>
+    </form>
+</section>
+</body>
+</html>

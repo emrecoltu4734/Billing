@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::section}, 'bill-runs')}">
+<head><title>Fatura dönemleri · ISP Billing</title></head>
+<body>
+<section>
+    <header class="page-head"><h1>Fatura dönemleri</h1></header>
+
+    <form class="card form" th:action="@{/bill-runs}" method="post"
+          onsubmit="return confirm('Seçilen dönem için tüm abonelere fatura kesilecek. Bu işlem geri alınamaz. Devam edilsin mi?')">
+        <h2>Dönemi faturala</h2>
+        <p class="muted">Seçilen ayda aktif olan tüm abonelikler için, abone başına bir fatura kesilir.
+            Ay ortası başlayan veya biten abonelikler gün bazında (kıst) hesaplanır. Her dönem yalnızca bir kez faturalanabilir.</p>
+        <div class="inline-form">
+            <label>Dönem <input type="month" name="period" required th:value="${defaultPeriod}"></label>
+            <button type="submit" class="btn btn-primary">Faturaları kes</button>
+        </div>
+    </form>
+
+    <div class="card">
+        <div class="card-head"><h2>Geçmiş</h2></div>
+        <p class="empty" th:if="${billRuns.isEmpty()}">Henüz fatura kesilmedi.</p>
+        <table th:unless="${billRuns.isEmpty()}">
+            <thead><tr><th>Dönem</th><th>Durum</th><th class="num">Fatura sayısı</th><th class="num">Toplam tutar</th><th>Çalıştırma zamanı</th></tr></thead>
+            <tbody>
+            <tr th:each="r : ${billRuns}">
+                <td th:text="${@fmt.period(r.periodStart)}"></td>
+                <td><span class="badge" th:classappend="${'badge-' + @fmt.tone(r.status)}"
+                          th:text="${r.status.name() == 'COMPLETED'} ? 'Tamamlandı' : 'Çalışıyor'"></span></td>
+                <td class="num" th:text="${r.invoiceCount}"></td>
+                <td class="num" th:text="${@fmt.money(r.totalAmount)}"></td>
+                <td th:text="${@fmt.dateTime(r.startedAt)}"></td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+</body>
+</html>

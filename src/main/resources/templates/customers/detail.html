@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::section}, 'customers')}">
+<head><title th:text="|${customer.name} · ISP Billing|">Abone</title></head>
+<body>
+<section>
+    <header class="page-head">
+        <div>
+            <p class="crumb"><a th:href="@{/customers}">Aboneler</a> / <span th:text="${customer.customerNo}"></span></p>
+            <h1 th:text="${customer.name}"></h1>
+        </div>
+        <div class="balance" th:classappend="${openBalance.signum() > 0} ? 'balance-due'">
+            <span class="muted">Açık bakiye</span>
+            <strong th:text="${@fmt.money(openBalance)}"></strong>
+        </div>
+    </header>
+
+    <div class="card">
+        <dl class="facts">
+            <div><dt>Tip</dt><dd th:text="${@fmt.label(customer.type)}"></dd></div>
+            <div><dt>TCKN / VKN</dt><dd class="mono" th:text="${customer.taxId}"></dd></div>
+            <div th:if="${customer.taxOffice}"><dt>Vergi dairesi</dt><dd th:text="${customer.taxOffice}"></dd></div>
+            <div><dt>Telefon</dt><dd th:text="${customer.phone ?: '—'}"></dd></div>
+            <div><dt>E-posta</dt><dd th:text="${customer.email ?: '—'}"></dd></div>
+            <div class="wide"><dt>Adres</dt><dd th:text="${customer.address ?: '—'}"></dd></div>
+        </dl>
+    </div>
+
+    <div class="card">
+        <div class="card-head"><h2>Abonelikler</h2></div>
+        <p class="empty" th:if="${subscriptions.isEmpty()}">Bu abonenin aboneliği yok. Aşağıdan başlatabilirsiniz.</p>
+        <table th:unless="${subscriptions.isEmpty()}">
+            <thead><tr><th>Tarife</th><th class="num">Aylık ücret</th><th>Başlangıç</th><th>Bitiş</th><th>Durum</th><th></th></tr></thead>
+            <tbody>
+            <tr th:each="s : ${subscriptions}">
+                <td><span th:text="${s.planName}"></span> <span class="muted mono" th:text="${s.planCode}"></span></td>
+                <td class="num" th:text="${@fmt.money(s.monthlyFee)}"></td>
+                <td th:text="${@fmt.date(s.startDate)}"></td>
+                <td th:text="${s.endDate != null} ? ${@fmt.date(s.endDate)} : '—'"></td>
+                <td><span class="badge" th:classappend="${'badge-' + @fmt.tone(s.status)}" th:text="${@fmt.label(s.status)}"></span></td>
+                <td class="row-actions">
+                    <form th:if="${s.status.name() == 'ACTIVE'}" th:action="@{/subscriptions/{id}/suspend(id=${s.id})}" method="post">
+                        <button class="btn btn-small" type="submit">Kısıtla</button>
+                    </form>
+                    <form th:if="${s.status.name() == 'SUSPENDED'}" th:action="@{/subscriptions/{id}/resume(id=${s.id})}" method="post">
+                        <button class="btn btn-small" type="submit">Aç</button>
+                    </form>
+                    <details th:if="${s.status.name() != 'TERMINATED'}" class="inline-details">
+                        <summary class="btn btn-small btn-danger-ghost">Sonlandır</summary>
+                        <form th:action="@{/subscriptions/{id}/terminate(id=${s.id})}" method="post" class="inline-form">
+                            <label>Son gün <input type="date" name="endDate" required th:value="${@fmt.today()}"></label>
+                            <button class="btn btn-small btn-danger" type="submit">Onayla</button>
+                        </form>
+                    </details>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+        <form class="inline-form add-sub" th:action="@{/customers/{id}/subscriptions(id=${customer.id})}" method="post">
+            <label>Tarife
+                <select name="planId" required>
+                    <option value="">Seçin…</option>
+                    <option th:each="p : ${plans}" th:value="${p.id}"
+                            th:text="|${p.name} (${@fmt.money(p.monthlyFee)})|"></option>
+                </select>
+            </label>
+            <label>Başlangıç <input type="date" name="startDate" required th:value="${@fmt.today()}"></label>
+            <button class="btn btn-primary" type="submit">Abonelik başlat</button>
+            <span class="muted" th:if="${plans.isEmpty()}">Önce <a th:href="@{/plans}">tarife</a> ekleyin.</span>
+        </form>
+    </div>
+
+    <div class="card">
+        <div class="card-head"><h2>Faturalar</h2></div>
+        <p class="empty" th:if="${invoices.isEmpty()}">Henüz fatura yok.</p>
+        <table th:unless="${invoices.isEmpty()}">
+            <thead><tr><th>Fatura no</th><th>Dönem</th><th>Son ödeme</th><th class="num">Tutar</th><th class="num">Kalan</th><th>Durum</th></tr></thead>
+            <tbody>
+            <tr th:each="i : ${invoices}">
+                <td><a class="mono" th:href="@{/invoices/{id}(id=${i.id})}" th:text="${i.invoiceNo}"></a></td>
+                <td th:text="${@fmt.period(i.periodStart)}"></td>
+                <td th:text="${@fmt.date(i.dueDate)}" th:classappend="${i.overdue} ? 'text-danger'"></td>
+                <td class="num" th:text="${@fmt.money(i.totalAmount)}"></td>
+                <td class="num" th:text="${@fmt.money(i.openAmount)}"></td>
+                <td>
+                    <span class="badge" th:classappend="${'badge-' + @fmt.tone(i.status)}" th:text="${@fmt.label(i.status)}"></span>
+                    <span class="badge badge-red" th:if="${i.overdue}">Gecikmiş</span>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+</body>
+</html>

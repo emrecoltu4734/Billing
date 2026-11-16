@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::section}, 'customers')}">
+<head><title>Aboneler · ISP Billing</title></head>
+<body>
+<section>
+    <header class="page-head">
+        <h1>Aboneler</h1>
+        <a class="btn btn-primary" th:href="@{/customers/new}">+ Yeni abone</a>
+    </header>
+    <form class="search" th:action="@{/customers}" method="get">
+        <input name="q" th:value="${q}" placeholder="Ad, abone no veya TCKN/VKN ile ara" aria-label="Ara">
+        <button class="btn" type="submit">Ara</button>
+        <a class="btn btn-ghost" th:if="${q}" th:href="@{/customers}">Temizle</a>
+    </form>
+    <div class="card">
+        <p class="empty" th:if="${page.isEmpty()}">
+            <span th:if="${q}">Aramaya uyan abone yok.</span>
+            <span th:unless="${q}">Henüz abone yok. <a th:href="@{/customers/new}">İlk aboneyi ekleyin.</a></span>
+        </p>
+        <table th:unless="${page.isEmpty()}">
+            <thead><tr><th>Abone no</th><th>Ad soyad / Unvan</th><th>Tip</th><th>TCKN/VKN</th><th>Telefon</th></tr></thead>
+            <tbody>
+            <tr th:each="c : ${page.content}">
+                <td><a th:href="@{/customers/{id}(id=${c.id})}" th:text="${c.customerNo}"></a></td>
+                <td><a th:href="@{/customers/{id}(id=${c.id})}" th:text="${c.name}"></a></td>
+                <td th:text="${@fmt.label(c.type)}"></td>
+                <td class="mono" th:text="${c.taxId}"></td>
+                <td th:text="${c.phone}"></td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+    <nav class="pager" th:if="${page.totalPages > 1}">
+        <a class="btn btn-ghost" th:if="${page.hasPrevious()}" th:href="@{/customers(q=${q},page=${page.number - 1})}">← Önceki</a>
+        <span class="muted" th:text="|Sayfa ${page.number + 1} / ${page.totalPages}|"></span>
+        <a class="btn btn-ghost" th:if="${page.hasNext()}" th:href="@{/customers(q=${q},page=${page.number + 1})}">Sonraki →</a>
+    </nav>
+</section>
+</body>
+</html>

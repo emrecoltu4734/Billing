@@ -3,3 +3,7 @@ spring:
     url: ${TEST_DB_URL:jdbc:postgresql://localhost:5432/billing_test}
   flyway:
     clean-disabled: false
+billing:
+  admin:
+    username: admin
+    password: test-sifre

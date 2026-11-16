@@ -63,7 +63,7 @@ public class BillRunService {
         LocalDate periodStart = period.atDay(1);
         LocalDate periodEnd = period.atEndOfMonth();
         if (billRuns.existsByPeriodStart(periodStart)) {
-            throw new BusinessException(period + " dönemi zaten faturalandı");
+            throw new BusinessException(periodName(period) + " dönemi zaten faturalandı");
         }
 
         BillRun run = billRuns.save(new BillRun(periodStart, periodEnd, OffsetDateTime.now(clock)));
@@ -99,6 +99,11 @@ public class BillRunService {
         run.complete(invoiceCount, runTotal, OffsetDateTime.now(clock));
         log.info("Bill run {} tamamlandı: {} fatura, toplam {} TL", period, invoiceCount, runTotal);
         return run;
+    }
+
+    private static String periodName(YearMonth period) {
+        return period.getMonth().getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.forLanguageTag("tr-TR"))
+                + " " + period.getYear();
     }
 
     private static String describe(Plan plan, Charge charge) {

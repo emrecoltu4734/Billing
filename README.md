@@ -2,10 +2,13 @@
 
 Küçük internet servis sağlayıcıları (fiber, kablosuz/WISP, site interneti) için abone faturalandırma sistemi.
 
-**Durum:** MVP iskeleti. Abone → tarife → abonelik → aylık fatura dönemi (bill run) → fatura → tahsilat akışı çalışıyor.
+**Durum:** MVP. Abone → tarife → abonelik → aylık fatura dönemi (bill run) → fatura → tahsilat akışı hem web panelinden hem REST API'den çalışıyor.
+
+![Özet ekranı](docs/screenshots/ozet.png)
 
 ## Teknoloji
-- Java 21, Spring Boot 3.5
+- Java 21, Spring Boot 3.5, Spring Security
+- Panel: Thymeleaf (sunucu tarafında üretilen sayfalar, ayrı bir frontend projesi yok)
 - PostgreSQL 16, Flyway (şema: `src/main/resources/db/migration`)
 
 ## Çalıştırma
@@ -14,6 +17,22 @@ Küçük internet servis sağlayıcıları (fiber, kablosuz/WISP, site interneti
 docker compose up -d          # PostgreSQL (billing + billing_test veritabanları)
 mvn spring-boot:run           # http://localhost:8080
 mvn test                      # birim + uçtan uca testler (billing_test veritabanını kullanır)
+```
+
+### Panel girişi
+İlk açılışta hiç kullanıcı yoksa `admin` kullanıcısı oluşturulur. Şifreyi `BILLING_ADMIN_PASSWORD` ile verin;
+vermezseniz rastgele bir şifre üretilip uygulama loguna yazılır.
+
+```bash
+BILLING_ADMIN_PASSWORD=gizli123 mvn spring-boot:run
+```
+
+### Demo modu (satış görüşmeleri için)
+Boş bir veritabanına 26 örnek abone, 5 tarife, geçmiş iki aylık fatura, tahsilatlar ve borçlular yükler.
+Geçen ay faturalanmadan bırakılır, böylece demoda "Faturaları kes" canlı gösterilebilir.
+
+```bash
+BILLING_ADMIN_PASSWORD=demo1234 mvn spring-boot:run -Dspring-boot.run.profiles=demo
 ```
 
 Veritabanı bağlantısı ortam değişkenleriyle değiştirilebilir: `DB_URL`, `DB_USER`, `DB_PASSWORD`, `TEST_DB_URL`.
@@ -35,7 +54,26 @@ Veritabanı bağlantısı ortam değişkenleriyle değiştirilebilir: `DB_URL`, 
 
 > ⚠️ ÖİV/KDV oranları tarifede tutulur ve kurallar canlıya çıkmadan önce bir mali müşavirle doğrulanmalıdır.
 
+## Panel
+
+| Sayfa | Ne yapılır |
+|---|---|
+| Özet | Aktif abonelik, aylık tekrarlayan gelir, bu ay tahsilat, vadesi geçmiş alacak; borçlular ve son dönemler |
+| Aboneler | Arama (ad / abone no / TCKN-VKN), yeni abone, abone detayı: abonelik başlat, kısıtla, aç, sonlandır; açık bakiye ve faturalar |
+| Faturalar | Ödenmemiş / ödenmiş / tümü; fatura detayında satırlar, vergi dökümü ve tahsilat kaydı |
+| Borçlular | Vadesi geçmiş faturalar, gecikme günü ve toplam gecikmiş alacak |
+| Fatura dönemleri | Bir ayı tek tıkla faturala, geçmiş çalıştırmalar |
+| Tarifeler | Tarife ekle (vergiler dahil tutar otomatik gösterilir), satışa aç/kapat |
+
+Tutarlar Türkçe biçimde girilebilir: `1.234,56`, `396,00` veya `396.00`.
+
+| Abone detayı | Fatura |
+|---|---|
+| ![Abone detayı](docs/screenshots/abone-detay.png) | ![Fatura](docs/screenshots/fatura.png) |
+
 ## API
+
+Tüm `/api/**` uçları HTTP Basic kimlik doğrulaması ister (panel kullanıcısıyla aynı): `curl -u admin:şifre ...`
 
 | Metot | Yol | Açıklama |
 |---|---|---|
@@ -56,6 +94,7 @@ Veritabanı bağlantısı ortam değişkenleriyle değiştirilebilir: `DB_URL`, 
 
 ```bash
 H='Content-Type: application/json'
+alias curl='curl -u admin:gizli123'
 curl -XPOST localhost:8080/api/customers -H "$H" -d '{"type":"INDIVIDUAL","name":"Ayşe Yılmaz","taxId":"12345678901"}'
 curl -XPOST localhost:8080/api/plans -H "$H" -d '{"code":"FIBER100","name":"Fiber 100 Mbps","monthlyFee":300,"oivRate":10,"vatRate":20}'
 curl -XPOST localhost:8080/api/subscriptions -H "$H" -d '{"customerId":1,"planId":1,"startDate":"2026-11-10"}'
@@ -69,5 +108,6 @@ curl "localhost:8080/api/invoices?customerId=1"
 3. **PDF fatura**
 4. **e-Fatura / e-Arşiv:** Özel entegratör API entegrasyonu
 5. **RADIUS:** Borçlu aboneyi otomatik kısıtlama, ödeyince açma
-6. **Panel:** İSS personeli için web arayüzü, kimlik doğrulama, çoklu firma (multi-tenant)
-7. **BTK raporları** ve Excel'den abone aktarımı
+6. **Panel geliştirmeleri:** Kullanıcı yönetimi ekranı, abone bilgisi düzenleme, fatura iptali, Excel'e aktarım
+7. **Çoklu firma (multi-tenant):** Tek kurulumda birden çok İSS (SaaS olarak satmak için)
+8. **BTK raporları** ve Excel'den abone aktarımı
