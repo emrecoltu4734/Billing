@@ -1,6 +1,9 @@
-# ISP Billing
+# ISP360
 
 Küçük internet servis sağlayıcıları (fiber, kablosuz/WISP, site interneti) için abone faturalandırma sistemi.
+İSS'nin kendi sunucusuna kurulur; kurulum, destek ve fatura başına ücretle lisanslanır.
+
+📐 **Mimari ve yol haritası:** [docs/TEKNIK_MIMARI.md](docs/TEKNIK_MIMARI.md)
 
 **Durum:** MVP. Abone → tarife → abonelik → aylık fatura dönemi (bill run) → fatura → tahsilat akışı hem web panelinden hem REST API'den çalışıyor.
 
@@ -103,11 +106,5 @@ curl "localhost:8080/api/invoices?customerId=1"
 ```
 
 ## Yol haritası
-1. **Tahsilat:** iyzico / PayTR ödeme linki, kayıtlı karttan otomatik çekim
-2. **Hatırlatma:** Vadesi yaklaşan/geçen faturalar için SMS ve e-posta
-3. **PDF fatura**
-4. **e-Fatura / e-Arşiv:** Özel entegratör API entegrasyonu
-5. **RADIUS:** Borçlu aboneyi otomatik kısıtlama, ödeyince açma
-6. **Panel geliştirmeleri:** Kullanıcı yönetimi ekranı, abone bilgisi düzenleme, fatura iptali, Excel'e aktarım
-7. **Çoklu firma (multi-tenant):** Tek kurulumda birden çok İSS (SaaS olarak satmak için)
-8. **BTK raporları** ve Excel'den abone aktarımı
+
+Güncel yol haritası ve durum: [docs/TEKNIK_MIMARI.md §15](docs/TEKNIK_MIMARI.md#15-geliştirme-yol-haritası)
