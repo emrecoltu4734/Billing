@@ -1,6 +1,10 @@
 package com.ispbilling.demo;
 
+import com.ispbilling.billing.BillCycle;
+import com.ispbilling.billing.BillCycleService;
 import com.ispbilling.billing.BillRunService;
+import com.ispbilling.billing.BillRunView;
+import com.ispbilling.billing.CreateBillCycleRequest;
 import com.ispbilling.customer.CreateCustomerRequest;
 import com.ispbilling.customer.Customer;
 import com.ispbilling.customer.CustomerRepository;
@@ -56,6 +60,7 @@ public class DemoDataLoader implements ApplicationRunner {
 
     private final CustomerRepository customerRepository;
     private final CustomerService customers;
+    private final BillCycleService cycles;
     private final PlanService plans;
     private final SubscriptionService subscriptions;
     private final BillRunService billRuns;
@@ -64,11 +69,13 @@ public class DemoDataLoader implements ApplicationRunner {
     private final JdbcClient jdbc;
     private final Clock clock;
 
-    public DemoDataLoader(CustomerRepository customerRepository, CustomerService customers, PlanService plans,
+    public DemoDataLoader(CustomerRepository customerRepository, CustomerService customers, BillCycleService cycles,
+                          PlanService plans,
                           SubscriptionService subscriptions, BillRunService billRuns, InvoiceService invoices,
                           PaymentService payments, JdbcClient jdbc, Clock clock) {
         this.customerRepository = customerRepository;
         this.customers = customers;
+        this.cycles = cycles;
         this.plans = plans;
         this.subscriptions = subscriptions;
         this.billRuns = billRuns;
@@ -95,42 +102,54 @@ public class DemoDataLoader implements ApplicationRunner {
                 plan("FIBER100", "Fiber 100 Mbps", "450.00"));
         Plan staticIp = plan("STATICIP", "Sabit IP", "75.00");
 
+        // İki fatura dönemi: ayın 1'i (varsayılan, migration ile gelir) ve ayın 15'i
+        BillCycle c01 = cycles.getDefault();
+        BillCycle c15 = cycles.create(new CreateBillCycleRequest("C15", "Ayın 15'i", 15, false));
+
         int taxSeed = 100000000;
+        int index = 0;
         for (String name : INDIVIDUALS) {
+            String cycle = index++ % 3 == 0 ? c15.getCode() : c01.getCode();
             Customer c = customers.create(new CreateCustomerRequest(CustomerType.INDIVIDUAL, name,
-                    "1" + (taxSeed += 7919) + "0", null, phone(rnd), null, "Merkez Mah. No: " + (rnd.nextInt(80) + 1)));
+                    "1" + (taxSeed += 7919) + "0", null, phone(rnd), null, "Merkez Mah. No: " + (rnd.nextInt(80) + 1),
+                    cycle));
             subscribe(c, internet.get(rnd.nextInt(internet.size())), first, current, rnd);
         }
         for (String name : CORPORATES) {
             Customer c = customers.create(new CreateCustomerRequest(CustomerType.CORPORATE, name,
                     String.valueOf(1000000000L + rnd.nextInt(899999999)), "Merkez", phone(rnd), null,
-                    "Çarşı Cad. No: " + (rnd.nextInt(80) + 1)));
+                    "Çarşı Cad. No: " + (rnd.nextInt(80) + 1), c15.getCode()));
             subscribe(c, internet.get(2 + rnd.nextInt(2)), first, current, rnd);
             subscriptions.create(c.getId(), staticIp.getId(), first.atDay(1));
         }
 
-        // Son üç ayın ilk ikisini faturala, geçmiş tarihli yap ve tahsilat ekle
-        for (YearMonth period : List.of(current.minusMonths(3), current.minusMonths(2))) {
-            billRuns.run(period);
-            LocalDate issue = period.plusMonths(1).atDay(1);
-            jdbc.sql("update invoice set issue_date = :issue, due_date = :due where period_start = :ps")
-                    .param("issue", issue).param("due", issue.plusDays(15)).param("ps", period.atDay(1)).update();
-            boolean older = period.equals(current.minusMonths(3));
-            for (InvoiceView i : invoices.search(InvoiceService.OPEN_STATUSES,
-                    org.springframework.data.domain.Pageable.unpaged()).getContent()) {
-                if (!i.periodStart().equals(period.atDay(1))) continue;
-                double roll = rnd.nextDouble();
-                if (roll < (older ? 0.88 : 0.65)) {
-                    payments.pay(i.id(), i.openAmount(), method(rnd), null);
-                } else if (roll < (older ? 0.94 : 0.75)) {
-                    payments.pay(i.id(), i.openAmount().divide(BigDecimal.TWO, 2, RoundingMode.DOWN), PaymentMethod.CASH, null);
+        // Her cycle'ın son iki bitmiş döneminden öncekileri faturala, geçmiş tarihli yap ve tahsilat ekle.
+        // En son biten dönem demoda canlı faturalamak için bırakılır.
+        LocalDate today = LocalDate.now(clock);
+        for (BillCycle cycle : List.of(c01, c15)) {
+            YearMonth latest = cycle.latestEndedPeriod(today);
+            for (YearMonth period : List.of(latest.minusMonths(2), latest.minusMonths(1))) {
+                BillRunView run = billRuns.run(cycle.getCode(), period);
+                LocalDate issue = cycle.runDate(period);
+                jdbc.sql("update invoice set issue_date = :issue, due_date = :due where bill_run_id = :run")
+                        .param("issue", issue).param("due", issue.plusDays(15)).param("run", run.id()).update();
+                boolean older = period.equals(latest.minusMonths(2));
+                for (InvoiceView i : invoices.search(InvoiceService.OPEN_STATUSES,
+                        org.springframework.data.domain.Pageable.unpaged()).getContent()) {
+                    if (!i.periodStart().equals(cycle.periodStart(period))) continue;
+                    double roll = rnd.nextDouble();
+                    if (roll < (older ? 0.88 : 0.65)) {
+                        payments.pay(i.id(), i.openAmount(), method(rnd), null);
+                    } else if (roll < (older ? 0.94 : 0.75)) {
+                        payments.pay(i.id(), i.openAmount().divide(BigDecimal.TWO, 2, RoundingMode.DOWN), PaymentMethod.CASH, null);
+                    }
                 }
             }
         }
         jdbc.sql("update payment p set paid_at = i.due_date - (random() * 12)::int * interval '1 day' + interval '10 hours' " +
                  "from invoice i where i.id = p.invoice_id").update();
-        log.info("Demo verisi yüklendi: {} abone. {} dönemi faturalanmayı bekliyor.",
-                INDIVIDUALS.length + CORPORATES.length, current.minusMonths(1));
+        log.info("Demo verisi yüklendi: {} abone, 2 fatura dönemi. Son biten dönemler faturalanmayı bekliyor.",
+                INDIVIDUALS.length + CORPORATES.length);
     }
 
     private Plan plan(String code, String name, String fee) {

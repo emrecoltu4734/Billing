@@ -56,6 +56,14 @@ public class Fmt {
         return t == null ? "" : t.atZoneSameInstant(clock.getZone()).format(DATE_TIME);
     }
 
+    public static String periodName(java.time.YearMonth ym) {
+        return ym.getMonth().getDisplayName(TextStyle.FULL, TR) + " " + ym.getYear();
+    }
+
+    public String yearMonth(java.time.YearMonth ym) {
+        return ym == null ? "" : periodName(ym);
+    }
+
     /** 2026-11-01 → "Kasım 2026" */
     public String period(LocalDate d) {
         if (d == null) return "";
@@ -99,6 +107,11 @@ public class Fmt {
                 case CREDIT_CARD -> "Kredi kartı";
                 case ONLINE -> "Online ödeme";
             };
+            case com.ispbilling.billing.BillRun.Status s -> switch (s) {
+                case RUNNING -> "Çalışıyor";
+                case COMPLETED -> "Tamamlandı";
+                case COMPLETED_WITH_ERRORS -> "Hatalarla bitti";
+            };
             case CustomerType t -> switch (t) {
                 case INDIVIDUAL -> "Bireysel";
                 case CORPORATE -> "Kurumsal";
@@ -113,6 +126,7 @@ public class Fmt {
         return switch (e.name()) {
             case "PAID", "ACTIVE", "COMPLETED" -> "green";
             case "PARTIALLY_PAID", "SUSPENDED", "RUNNING" -> "amber";
+            case "COMPLETED_WITH_ERRORS" -> "red";
             case "ISSUED" -> "blue";
             default -> "muted";
         };

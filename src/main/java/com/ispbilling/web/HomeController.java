@@ -1,6 +1,6 @@
 package com.ispbilling.web;
 
-import com.ispbilling.billing.BillRunRepository;
+import com.ispbilling.billing.BillRunService;
 import com.ispbilling.dashboard.DashboardService;
 import com.ispbilling.invoice.InvoiceService;
 import org.springframework.stereotype.Controller;
@@ -12,9 +12,9 @@ public class HomeController {
 
     private final DashboardService dashboard;
     private final InvoiceService invoices;
-    private final BillRunRepository billRuns;
+    private final BillRunService billRuns;
 
-    public HomeController(DashboardService dashboard, InvoiceService invoices, BillRunRepository billRuns) {
+    public HomeController(DashboardService dashboard, InvoiceService invoices, BillRunService billRuns) {
         this.dashboard = dashboard;
         this.invoices = invoices;
         this.billRuns = billRuns;
@@ -29,7 +29,7 @@ public class HomeController {
     String dashboard(Model model) {
         model.addAttribute("summary", dashboard.summary());
         model.addAttribute("overdue", invoices.overdue().stream().limit(8).toList());
-        model.addAttribute("billRuns", billRuns.findAllByOrderByPeriodStartDesc().stream().limit(4).toList());
+        model.addAttribute("billRuns", billRuns.list().stream().limit(5).toList());
         return "dashboard";
     }
 }

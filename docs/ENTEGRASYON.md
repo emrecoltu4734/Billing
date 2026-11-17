@@ -26,7 +26,7 @@ Sizin sistemleriniz
 
 > **Core tablolara (`customer`, `subscription`, `invoice`, `payment` vb.) doğrudan yazmayın ve okumayın.**
 > Bu tabloların yapısı sürümler arasında değişebilir. Sözleşme yalnızca bu belgedeki API ve `in_*`
-> tablolarıdır. Entegrasyon veritabanı kullanıcınızın yetkileri buna göre verilir (§5).
+> tablolarıdır. Entegrasyon veritabanı kullanıcınızın yetkileri buna göre verilir (§6).
 
 ## 2. Kimlik eşlemesi: `external_ref`
 
@@ -79,6 +79,7 @@ Her satırda tüm alanlar gönderilir: boş gönderilen alan boşaltılır.
 | `phone` | varchar(20) | | |
 | `email` | varchar(200) | | Geçerli e-posta |
 | `address` | varchar(500) | | |
+| `bill_cycle_code` | varchar(20) | | Fatura dönemi kodu (ör. `C15`). Yeni abonede boşsa varsayılan dönem; **mevcut abonede boşsa dönemi değişmez.** |
 
 ```sql
 INSERT INTO in_customer (external_ref, type, name, tax_id, phone, email)
@@ -139,13 +140,16 @@ VALUES ('IYZ-552190331', 'ISP2026000000123', 396.00, 'ONLINE', TIMESTAMPTZ '2026
 
 | Method | Uç | İşlem |
 |---|---|---|
-| POST · GET | `/api/v1/customers` | Abone oluştur · listele/ara (`?q=`) |
-| GET | `/api/v1/customers/{id}` | Abone detayı |
+| POST · GET | `/api/v1/customers` | Abone oluştur (isteğe bağlı `billCycleCode`) · listele/ara (`?q=`) |
+| GET | `/api/v1/customers/{id}` | Abone detayı (`billCycleCode` dahil) |
+| PUT | `/api/v1/customers/{id}/bill-cycle` | Aboneyi başka fatura dönemine taşı: `{"billCycleCode":"C15"}` |
+| POST · GET | `/api/v1/bill-cycles` | Fatura dönemi oluştur: `{"code":"C15","name":"Ayın 15'i","cycleDay":15}` · listele |
 | POST · GET | `/api/v1/plans` | Tarife oluştur · listele |
 | POST | `/api/v1/subscriptions` | Abonelik başlat |
 | GET | `/api/v1/subscriptions?customerId=` | Abonenin abonelikleri |
 | POST | `/api/v1/subscriptions/{id}/suspend` · `/resume` · `/terminate` | Durum geçişleri |
-| POST · GET | `/api/v1/bill-runs` | Dönemi faturala · geçmiş |
+| POST · GET | `/api/v1/bill-runs` | Dönemi faturala: `{"cycleCode":"C15","period":"2026-11"}` (`cycleCode` boşsa varsayılan) · geçmiş |
+| GET | `/api/v1/bill-runs/{id}` | Çalıştırma ayrıntısı ve faturalanamayan aboneler |
 | GET | `/api/v1/invoices?customerId=` · `/api/v1/invoices/{id}` | Faturalar |
 | GET | `/api/v1/invoices/overdue` | Vadesi geçmiş faturalar |
 | POST | `/api/v1/payments` | Tahsilat |
@@ -159,10 +163,23 @@ curl -u entegrasyon:şifre -H 'Content-Type: application/json' \
      https://isp360.ornek.local/api/v1/customers
 ```
 
-## 5. Veritabanı kullanıcısı (giriş tabloları için)
+## 5. Fatura dönemleri (bill cycle)
+
+- Her abone bir fatura dönemine bağlıdır; günü 1–28 arasıdır. `cycle_day = D` olan dönemde `"2026-11"`
+  dönemi **D Kasım – (D-1) Aralık** aralığını kapsar ve **D Aralık'ta** faturalanır. D = 1 ise takvim ayıdır.
+- Dönem bitmeden faturalanamaz (`409`).
+- Bir dönem tamamen faturalandıktan sonra tekrar çalıştırılamaz (`409`). Bazı aboneler faturalanamadıysa
+  çalıştırma `COMPLETED_WITH_ERRORS` durumunda biter; **aynı dönem tekrar gönderildiğinde yalnızca kalan
+  aboneler faturalanır.**
+- Çalıştırma durumları: `RUNNING` · `COMPLETED` · `COMPLETED_WITH_ERRORS`.
+- Abone başka bir döneme taşındığında daha önce faturalanan günler tekrar faturalanmaz; yeni dönemin ilk
+  faturası kaldığı günden başlar (kıst).
+- Otomatik faturalama dönem bazında açılır; açık olan dönemler fatura gününde gece faturalanır.
+
+## 6. Veritabanı kullanıcısı (giriş tabloları için)
 
 Kurulumda giriş tablolarına erişecek ayrı bir veritabanı kullanıcısı açılır. Bu kullanıcı core
-tablolara erişemez:
+tablolara erişemez (doğrulandı: core tabloya erişimde `permission denied` alır):
 
 ```sql
 CREATE ROLE isp360_entegrasyon LOGIN PASSWORD '...';
@@ -171,7 +188,7 @@ GRANT SELECT, INSERT ON in_customer, in_subscription_event, in_payment TO isp360
 GRANT USAGE ON SEQUENCE in_customer_id_seq, in_subscription_event_id_seq, in_payment_id_seq TO isp360_entegrasyon;
 ```
 
-## 6. Sözleşme ve sürüm kuralları
+## 7. Sözleşme ve sürüm kuralları
 
 ISP360 v1 boyunca şunları **yapmaz**:
 
@@ -183,6 +200,6 @@ ISP360 v1 içinde şunları **yapabilir**, entegrasyonunuz bunlara hazır olmal�
 
 - Yeni uç, yeni giriş tablosu, yeni **boş bırakılabilir** kolon eklemek
 - Yanıtlara yeni alan eklemek (bilinmeyen alanları yok sayın)
-- Yeni `operation`, `error_code` veya `method` değeri eklemek
+- Yeni `operation`, `error_code`, `method` veya durum (`status`) değeri eklemek
 
 Geriye uyumsuz bir değişiklik gerekirse `/api/v2` açılır ve v1 en az 12 ay birlikte çalışır.

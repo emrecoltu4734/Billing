@@ -131,7 +131,7 @@ aboneye gider. Bu, büyük operatörlerdeki BSCS benzeri modelin küçük ölçe
 **Temel kural: müşteri sistemleri core tablolara doğrudan yazmaz ve okumaz.**
 
 - Core tablo yapısı ürün geliştikçe değişebilir. Müşteriye karşı sabit tutulan sözleşme yalnızca
-  `/api/v1` ve `in_*` tablolarıdır. Sözleşme kuralları: [ENTEGRASYON.md §6](ENTEGRASYON.md#6-sözleşme-ve-sürüm-kuralları).
+  `/api/v1` ve `in_*` tablolarıdır. Sözleşme kuralları: [ENTEGRASYON.md §6](ENTEGRASYON.md#7-sözleşme-ve-sürüm-kuralları).
 - Giriş tablosu satırları import batch'inde doğrulanır. Hatalı veri core'a ve faturaya girmez;
   hata kodu ve açıklaması aynı satıra geri yazılır.
 - Faturada sorun çıktığında hatanın beslenen veriden mi motordan mı kaynaklandığı satır kayıtlarından
@@ -312,7 +312,9 @@ denetim hakkı, cezai şart).
 | `customer` | Bireysel ve kurumsal aboneler |
 | `plan` | Tarifeler (aylık ücret, ÖİV, KDV) |
 | `subscription` | Abonelikler (başlangıç/bitiş, durum) |
-| `bill_run` | Toplu faturalandırma çalıştırmaları |
+| `bill_cycle` | Fatura dönemleri (gün 1–28, varsayılan, otomatik çalışma) |
+| `bill_run` | Toplu faturalandırma çalıştırmaları (cycle + dönem başına tekil) |
+| `bill_run_error` | Çalıştırmada faturalanamayan aboneler ve nedenleri |
 | `invoice` / `invoice_line` | Faturalar ve kalemleri |
 | `payment` | Tahsilatlar (şu an tek faturaya bağlı) |
 | `app_user` | Panel kullanıcıları |
@@ -372,8 +374,10 @@ edilebilir bileşenlere ayrılır.
 ### 7.1 Mevcut durum
 
 - `ChargeCalculator`: kıst ücret + ÖİV + KDV (ÖİV KDV matrahına dahil), her adımda 2 hane HALF_UP.
-- `BillRunService`: dönemle çakışan abonelikleri bulur, abone başına tek fatura keser; tek
-  transaction, aynı dönem iki kez çalıştırılamaz.
+- `BillCycle`: cycle gününe göre dönem başlangıcı/bitişi, fatura günü, son biten dönem.
+- `BillRunService`: cycle'daki faturalanacak aboneleri bulur, her aboneyi kendi transaction'ında
+  faturalar; hatalı abone `bill_run_error`'a yazılır ve run devam eder; aynı dönem tekrar çalıştırılınca
+  yalnızca kalan aboneler işlenir. Aboneliğin `billed_through` tarihi kesilen faturayla ilerler.
 
 ### 7.2 Hedef hesaplama akışı
 
@@ -628,7 +632,12 @@ veya ek ücretlidir.
 | Ödeme webhook'unun tekrarlanması | Tek ödeme kaydı | ◻ |
 | Toplu ödemenin birden çok faturaya dağıtımı | Eskiden yeniye doğru dağıtım | ◻ |
 | Kesinleşmiş faturada hata | İade faturası + ters ledger kaydı | ◻ |
-| Fatura oluşturma sırasında tek abonede hata | Diğer aboneler faturalanır, hata raporlanır | ◻ |
+| Fatura oluşturma sırasında tek abonede hata | Diğer aboneler faturalanır, hata raporlanır, kaldığı yerden devam | ✔ |
+| Abonenin fatura dönemi değişmesi | Aynı günler tekrar faturalanmaz, kalan günler kıst | ✔ |
+| Bitmemiş dönemin faturalanması | Reddedilir | ✔ |
+| Otomatik faturalama | Yalnızca açık cycle'lar, fatura gününde, bir kez | ✔ |
+| Faturalı döneme geriye dönük sonlandırma | Reddedilir (iade faturası Faz 5) | ✔ |
+| V3 verisi olan kurulumun V4'e yükseltilmesi | Aboneler varsayılan cycle'a, `billed_through` eski faturalardan | ✔ (elle doğrulandı) |
 | RADIUS bağlantısının kesilmesi | Faturalandırmanın etkilenmemesi | ◻ |
 | Lisans süresinin dolması | Kademeli yaptırım (§5.4) | ◻ |
 | Veritabanında fatura silinmesi | Hash zincirinin bozulduğunun tespiti | ◻ |
@@ -693,13 +702,16 @@ Tek geliştirici için hedef takvimdir. Entegrasyon, mevzuat ve pilot testleri s
 
 ### Faz 2 — Batch faturalandırma (2–3 hafta)
 
-- [ ] Bill cycle tanımları (ör. her ayın 1'i ve 15'i); aboneye bill cycle atanması
-- [ ] Zamanlanmış otomatik Billing Run (bill cycle gününde)
-- [ ] Parçalı (chunk) işleme; hatalı abone run'ı durdurmaz, kaldığı yerden devam eder
+- [x] Birden çok bill cycle (gün 1–28), varsayılan cycle; aboneye atama (panel, API, `in_customer.bill_cycle_code`)
+- [x] Cycle'a göre dönem hesabı (dönem sonu faturalama), dönem bitmeden faturalama engeli
+- [x] Abonelik bazında `billed_through`: cycle değişikliğinde aynı gün iki kez faturalanmaz
+- [x] Abone başına transaction; hatalı abone run'ı durdurmaz (`bill_run_error`), aynı dönem tekrar çalıştırılınca kaldığı yerden devam eder
+- [x] Cycle bazında açılan zamanlanmış otomatik Billing Run (fatura gününde gece)
 - [ ] Billing Item + fatura taslağı → kontrol → kesinleştirme
+- [ ] Fatura numarasının kesinleştirmede verilmesi (şu an hatalı abonede sıra numarasında boşluk oluşabilir)
 - [ ] Fatura çıktısı: PDF, toplu baskı/gönderim dosyası, e-posta ile gönderim
 - [ ] Çıkış (out_*) tabloları veya API ile kesinleşen faturaların müşteri sistemine geri verilmesi
-- [ ] `job_execution` tablosu ve panelde iş geçmişi
+- [ ] `job_execution` tablosu ve panelde iş geçmişi (bill run geçmişi ✔, import ve diğer işler ◻)
 
 ### Faz 3 — Kurulabilir ve lisanslı ürün (1–2 hafta)
 

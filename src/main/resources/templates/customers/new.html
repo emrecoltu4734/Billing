@@ -29,6 +29,14 @@
             </label>
         </div>
         <div class="form-row">
+            <label>Fatura dönemi
+                <select name="billCycleCode">
+                    <option th:each="c : ${cycles}" th:value="${c.code}" th:text="|${c.name} (ayın ${c.cycleDay}'i)|"
+                            th:selected="${param.billCycleCode != null ? param.billCycleCode[0] == c.code : c.isDefault}"></option>
+                </select>
+            </label>
+        </div>
+        <div class="form-row">
             <label>Telefon <input name="phone" th:value="${param.phone}" type="tel" maxlength="20"></label>
             <label>E-posta <input name="email" th:value="${param.email}" type="email" maxlength="200"></label>
         </div>

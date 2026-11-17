@@ -3,30 +3,83 @@
 <head><title>Fatura dönemleri · ISP360</title></head>
 <body>
 <section>
-    <header class="page-head"><h1>Fatura dönemleri</h1></header>
-
-    <form class="card form" th:action="@{/bill-runs}" method="post"
-          onsubmit="return confirm('Seçilen dönem için tüm abonelere fatura kesilecek. Bu işlem geri alınamaz. Devam edilsin mi?')">
-        <h2>Dönemi faturala</h2>
-        <p class="muted">Seçilen ayda aktif olan tüm abonelikler için, abone başına bir fatura kesilir.
-            Ay ortası başlayan veya biten abonelikler gün bazında (kıst) hesaplanır. Her dönem yalnızca bir kez faturalanabilir.</p>
-        <div class="inline-form">
-            <label>Dönem <input type="month" name="period" required th:value="${defaultPeriod}"></label>
-            <button type="submit" class="btn btn-primary">Faturaları kes</button>
+    <header class="page-head">
+        <div>
+            <h1>Fatura dönemleri</h1>
+            <p class="muted">Her abone bir fatura dönemine bağlıdır. Dönem bitince faturalanır: ayın 15'i dönemindeki
+                "Kasım" faturası 15 Kasım – 14 Aralık'ı kapsar ve 15 Aralık'ta kesilir.</p>
         </div>
-    </form>
+    </header>
 
     <div class="card">
-        <div class="card-head"><h2>Geçmiş</h2></div>
+        <table>
+            <thead><tr><th>Dönem</th><th class="num">Fatura günü</th><th class="num">Abone</th>
+                <th>Son biten dönem</th><th>Sıradaki fatura günü</th><th>Otomatik</th><th></th></tr></thead>
+            <tbody>
+            <tr th:each="c : ${cycles}">
+                <td>
+                    <strong th:text="${c.name}"></strong> <span class="muted mono" th:text="${c.code}"></span>
+                    <span class="badge badge-blue" th:if="${c.isDefault}">Varsayılan</span>
+                </td>
+                <td class="num" th:text="|Ayın ${c.cycleDay}'i|"></td>
+                <td class="num" th:text="${c.customerCount}"></td>
+                <td>
+                    <span th:text="|${@fmt.date(c.latestEndedStart)} – ${@fmt.date(c.latestEndedEnd)}|"></span>
+                    <span class="badge badge-green" th:if="${c.latestEndedBilled}">Faturalandı</span>
+                    <span class="badge badge-amber" th:unless="${c.latestEndedBilled}">Bekliyor</span>
+                </td>
+                <td th:text="${@fmt.date(c.nextRunDate)}"></td>
+                <td>
+                    <form th:action="@{/bill-cycles/{code}/auto-run(code=${c.code})}" method="post">
+                        <input type="hidden" name="enabled" th:value="${!c.autoRun}">
+                        <button class="btn btn-small" type="submit" th:text="${c.autoRun} ? 'Açık · kapat' : 'Kapalı · aç'"
+                                th:title="${c.autoRun} ? 'Fatura gününde gece otomatik faturalanıyor' : 'Faturalama elle başlatılıyor'"></button>
+                    </form>
+                </td>
+                <td class="row-actions">
+                    <form th:unless="${c.isDefault}" th:action="@{/bill-cycles/{code}/default(code=${c.code})}" method="post">
+                        <button class="btn btn-small btn-ghost" type="submit">Varsayılan yap</button>
+                    </form>
+                    <form th:action="@{/bill-runs}" method="post" class="inline-form"
+                          onsubmit="return confirm('Seçilen dönem için bu fatura dönemindeki tüm abonelere fatura kesilecek. Devam edilsin mi?')">
+                        <input type="hidden" name="cycleCode" th:value="${c.code}">
+                        <input type="month" name="period" required th:value="${c.latestEndedPeriod}" aria-label="Dönem">
+                        <button type="submit" class="btn btn-small btn-primary">Faturala</button>
+                    </form>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <details class="card">
+        <summary class="btn btn-ghost">+ Yeni fatura dönemi</summary>
+        <form class="form" th:action="@{/bill-cycles}" method="post" style="margin-top:12px">
+            <div class="form-row">
+                <label>Kod <input name="code" required maxlength="20" placeholder="C15" th:value="${param.code}"></label>
+                <label class="grow">Ad <input name="name" required maxlength="100" placeholder="Ayın 15'i" th:value="${param.name}"></label>
+                <label>Fatura günü (1-28) <input name="cycleDay" type="number" min="1" max="28" required th:value="${param.cycleDay}"></label>
+            </div>
+            <label style="flex-direction:row;align-items:center;gap:8px;font-weight:500">
+                <input type="checkbox" name="autoRun" value="true"> Fatura gününde gece otomatik faturala
+            </label>
+            <div class="form-actions"><button type="submit" class="btn btn-primary">Ekle</button></div>
+        </form>
+    </details>
+
+    <div class="card">
+        <div class="card-head"><h2>Faturalandırma geçmişi</h2></div>
         <p class="empty" th:if="${billRuns.isEmpty()}">Henüz fatura kesilmedi.</p>
         <table th:unless="${billRuns.isEmpty()}">
-            <thead><tr><th>Dönem</th><th>Durum</th><th class="num">Fatura sayısı</th><th class="num">Toplam tutar</th><th>Çalıştırma zamanı</th></tr></thead>
+            <thead><tr><th>Fatura dönemi</th><th>Dönem</th><th>Durum</th><th class="num">Fatura</th>
+                <th class="num">Hatalı abone</th><th class="num">Toplam tutar</th><th>Çalışma zamanı</th></tr></thead>
             <tbody>
             <tr th:each="r : ${billRuns}">
-                <td th:text="${@fmt.period(r.periodStart)}"></td>
-                <td><span class="badge" th:classappend="${'badge-' + @fmt.tone(r.status)}"
-                          th:text="${r.status.name() == 'COMPLETED'} ? 'Tamamlandı' : 'Çalışıyor'"></span></td>
+                <td th:text="${r.cycleName}"></td>
+                <td><a th:href="@{/bill-runs/{id}(id=${r.id})}" th:text="|${@fmt.date(r.periodStart)} – ${@fmt.date(r.periodEnd)}|"></a></td>
+                <td><span class="badge" th:classappend="${'badge-' + @fmt.tone(r.status)}" th:text="${@fmt.label(r.status)}"></span></td>
                 <td class="num" th:text="${r.invoiceCount}"></td>
+                <td class="num" th:classappend="${r.errorCount > 0} ? 'text-danger'" th:text="${r.errorCount}"></td>
                 <td class="num" th:text="${@fmt.money(r.totalAmount)}"></td>
                 <td th:text="${@fmt.dateTime(r.startedAt)}"></td>
             </tr>

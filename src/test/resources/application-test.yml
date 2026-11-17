@@ -9,3 +9,5 @@ billing:
     password: test-sifre
   import:
     enabled: false   # testler aktarımı kendileri tetikler
+  auto-run:
+    enabled: false   # testler runDueCycles'ı tarih vererek çağırır

@@ -46,7 +46,7 @@ Veritabanı bağlantısı ortam değişkenleriyle değiştirilebilir: `DB_URL`, 
 
 | Kural | Açıklama |
 |---|---|
-| Dönem | Takvim ayı (1'i – ay sonu) |
+| Dönem | Abonenin fatura dönemine göre: ayın D'si – sonraki ayın D-1'i (D=1 ise takvim ayı); dönem bitince faturalanır |
 | Kıst (prorate) | `aylık ücret × aktif gün / dönemdeki gün`. Başlangıç ve bitiş günleri dahil |
 | ÖİV | Net tutar üzerinden |
 | KDV | `(net + ÖİV) × KDV oranı`: ÖİV, KDV matrahına dahil |
@@ -67,7 +67,7 @@ Veritabanı bağlantısı ortam değişkenleriyle değiştirilebilir: `DB_URL`, 
 | Aboneler | Arama (ad / abone no / TCKN-VKN), yeni abone, abone detayı: abonelik başlat, kısıtla, aç, sonlandır; açık bakiye ve faturalar |
 | Faturalar | Ödenmemiş / ödenmiş / tümü; fatura detayında satırlar, vergi dökümü ve tahsilat kaydı |
 | Borçlular | Vadesi geçmiş faturalar, gecikme günü ve toplam gecikmiş alacak |
-| Fatura dönemleri | Bir ayı tek tıkla faturala, geçmiş çalıştırmalar |
+| Fatura dönemleri | Birden çok fatura günü (ör. ayın 1'i, 15'i), otomatik faturalama, dönem bazında faturalama, hatalı aboneleri görme ve yeniden deneme |
 | Tarifeler | Tarife ekle (vergiler dahil tutar otomatik gösterilir), satışa aç/kapat |
 | Veri aktarımı | Giriş tablolarının durumu, hatalı kayıtlar ve nedenleri, elle çalıştırma, yeniden deneme |
 
@@ -92,8 +92,10 @@ Tüm `/api/v1/**` uçları HTTP Basic kimlik doğrulaması ister (panel kullanı
 | POST | `/api/v1/subscriptions` | Abonelik başlat |
 | GET | `/api/v1/subscriptions?customerId=` | Abonenin abonelikleri |
 | POST | `/api/v1/subscriptions/{id}/suspend` · `/resume` · `/terminate` | Kısıtla / aç / sonlandır |
-| POST | `/api/v1/bill-runs` | Dönemi faturala: `{"period":"2026-11"}` |
-| GET | `/api/v1/bill-runs` | Çalıştırma geçmişi |
+| POST · GET | `/api/v1/bill-cycles` | Fatura dönemi tanımla / listele |
+| PUT | `/api/v1/customers/{id}/bill-cycle` | Aboneyi başka fatura dönemine taşı |
+| POST | `/api/v1/bill-runs` | Dönemi faturala: `{"cycleCode":"C15","period":"2026-11"}` |
+| GET | `/api/v1/bill-runs`, `/api/v1/bill-runs/{id}` | Çalıştırma geçmişi / ayrıntısı ve hatalar |
 | GET | `/api/v1/invoices?customerId=`, `/api/v1/invoices/{id}` | Faturalar / fatura detayı (satırlarla) |
 | GET | `/api/v1/invoices/overdue` | Borçlu listesi (vadesi geçmiş, ödenmemiş) |
 | POST | `/api/v1/payments` | Tahsilat: `{"invoiceId":1,"amount":100.00,"method":"ONLINE"}` |

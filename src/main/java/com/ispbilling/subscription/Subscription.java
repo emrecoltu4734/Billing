@@ -31,6 +31,9 @@ public class Subscription {
     /** Müşteri (İSS) sistemindeki abonelik/hizmet kimliği. */
     private String externalRef;
 
+    /** Bu güne kadar (dahil) faturalandı. Sonraki fatura bu günden sonrasını kapsar. */
+    private LocalDate billedThrough;
+
     protected Subscription() {
     }
 
@@ -62,8 +65,19 @@ public class Subscription {
         if (endDate.isBefore(startDate)) {
             throw new BusinessException("Bitiş tarihi başlangıç tarihinden önce olamaz");
         }
+        if (billedThrough != null && endDate.isBefore(billedThrough)) {
+            throw new BusinessException("Abonelik " + billedThrough.format(java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy"))
+                    + " tarihine kadar faturalandı; daha önceki bir tarihle sonlandırma iade faturası gerektirir (henüz desteklenmiyor)");
+        }
         this.endDate = endDate;
         this.status = SubscriptionStatus.TERMINATED;
+    }
+
+    /** Faturalandırma motoru tarafından fatura kesildikçe ilerletilir. */
+    public void markBilledThrough(LocalDate date) {
+        if (billedThrough == null || date.isAfter(billedThrough)) {
+            billedThrough = date;
+        }
     }
 
     private void requireStatus(SubscriptionStatus expected) {
@@ -79,4 +93,5 @@ public class Subscription {
     public LocalDate getStartDate() { return startDate; }
     public LocalDate getEndDate() { return endDate; }
     public String getExternalRef() { return externalRef; }
+    public LocalDate getBilledThrough() { return billedThrough; }
 }

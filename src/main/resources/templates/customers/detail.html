@@ -21,6 +21,17 @@
             <div th:if="${customer.taxOffice}"><dt>Vergi dairesi</dt><dd th:text="${customer.taxOffice}"></dd></div>
             <div><dt>Telefon</dt><dd th:text="${customer.phone ?: '—'}"></dd></div>
             <div><dt>E-posta</dt><dd th:text="${customer.email ?: '—'}"></dd></div>
+            <div><dt>Fatura dönemi</dt>
+                <dd>
+                    <form th:action="@{/customers/{id}/bill-cycle(id=${customer.id})}" method="post" class="inline-form">
+                        <select name="billCycleCode" aria-label="Fatura dönemi">
+                            <option th:each="c : ${cycles}" th:value="${c.code}" th:text="${c.name}"
+                                    th:selected="${c.code == customer.billCycleCode}"></option>
+                        </select>
+                        <button class="btn btn-small" type="submit">Değiştir</button>
+                    </form>
+                </dd>
+            </div>
             <div class="wide"><dt>Adres</dt><dd th:text="${customer.address ?: '—'}"></dd></div>
         </dl>
     </div>

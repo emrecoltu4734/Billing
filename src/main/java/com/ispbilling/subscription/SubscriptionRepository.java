@@ -21,6 +21,17 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
 
     java.util.Optional<Subscription> findByExternalRef(String externalRef);
 
+    /** Abonenin dönemle çakışan ve dönem içinde faturalanmamış günü olabilecek abonelikleri. */
+    @Query("""
+            select s from Subscription s join fetch s.plan
+             where s.customer.id = :customerId
+               and s.startDate <= :periodEnd
+               and (s.endDate is null or s.endDate >= :periodStart)
+               and (s.billedThrough is null or s.billedThrough < :periodEnd)
+             order by s.id
+            """)
+    List<Subscription> findBillableForCustomer(Long customerId, LocalDate periodStart, LocalDate periodEnd);
+
     boolean existsByExternalRef(String externalRef);
 
     @Query("select s from Subscription s join fetch s.plan where s.customer.id = :customerId order by s.id")

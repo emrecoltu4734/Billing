@@ -10,7 +10,7 @@ mimari bir karar değişirse önce o belgeyi güncelle, bir iş bitince §15'tek
 - Kaynak kod müşteriye verilmez; Docker imajı teslim edilir. Müşteriye özel kod dalı açılmaz.
 - **Faturalandırma çekirdeği + entegrasyon:** İSS sistemleri `/api/v1` veya giriş tablolarıyla (`in_*`) besler,
   import batch core'a işler, fatura günlerinde batch fatura keser. Hazır panel isteğe bağlıdır.
-- **`/api/v1` ve `in_*` tabloları müşteriyle sözleşmedir** ([`docs/ENTEGRASYON.md`](docs/ENTEGRASYON.md) §6):
+- **`/api/v1` ve `in_*` tabloları müşteriyle sözleşmedir** ([`docs/ENTEGRASYON.md`](docs/ENTEGRASYON.md) §7):
   kolon/uç silinmez, adı/anlamı değişmez; yalnızca boş bırakılabilir kolon ve yeni uç eklenir.
   Bunlarda değişiklik yaparsan ENTEGRASYON.md'yi de güncelle. Core tablolar serbestçe değişebilir.
 - Kurulumda bileşen sayısı az tutulur (uygulama + PostgreSQL). Redis, kuyruk sistemi, React yok (şimdilik).

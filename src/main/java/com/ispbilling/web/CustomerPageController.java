@@ -1,5 +1,6 @@
 package com.ispbilling.web;
 
+import com.ispbilling.billing.BillCycleService;
 import com.ispbilling.customer.CreateCustomerRequest;
 import com.ispbilling.customer.Customer;
 import com.ispbilling.customer.CustomerService;
@@ -28,9 +29,11 @@ public class CustomerPageController extends PageSupport {
     private final SubscriptionService subscriptions;
     private final InvoiceService invoices;
     private final PlanService plans;
+    private final BillCycleService cycles;
 
     public CustomerPageController(CustomerService customers, SubscriptionService subscriptions,
-                                  InvoiceService invoices, PlanService plans) {
+                                  InvoiceService invoices, PlanService plans, BillCycleService cycles) {
+        this.cycles = cycles;
         this.customers = customers;
         this.subscriptions = subscriptions;
         this.invoices = invoices;
@@ -47,7 +50,8 @@ public class CustomerPageController extends PageSupport {
     }
 
     @GetMapping("/customers/new")
-    String newForm() {
+    String newForm(Model model) {
+        model.addAttribute("cycles", cycles.all());
         return "customers/new";
     }
 
@@ -56,7 +60,7 @@ public class CustomerPageController extends PageSupport {
                   RedirectAttributes ra) {
         if (br.hasErrors()) {
             addErrors(model, br);
-            return "customers/new";
+            return newForm(model);
         }
         Customer c = customers.create(form);
         ra.addFlashAttribute("success", "Abone kaydedildi: " + c.getCustomerNo());
@@ -74,7 +78,14 @@ public class CustomerPageController extends PageSupport {
                 .map(InvoiceView::openAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add));
         model.addAttribute("plans", plans.activePlans());
+        model.addAttribute("cycles", cycles.all());
         return "customers/detail";
+    }
+
+    @PostMapping("/customers/{id}/bill-cycle")
+    String changeBillCycle(@PathVariable Long id, @RequestParam String billCycleCode, RedirectAttributes ra) {
+        return attempt(ra, "Fatura dönemi değiştirildi. Daha önce faturalanan günler tekrar faturalanmaz.",
+                "/customers/" + id, () -> customers.changeBillCycle(id, billCycleCode));
     }
 
     @PostMapping("/customers/{id}/subscriptions")

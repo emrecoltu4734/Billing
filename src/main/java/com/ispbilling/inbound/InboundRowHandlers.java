@@ -66,7 +66,8 @@ class InboundRowHandlers {
         String ref = row.requiredText("external_ref");
         CreateCustomerRequest request = new CreateCustomerRequest(
                 row.enumValue("type", CustomerType.class), row.text("name"), row.text("tax_id"),
-                row.text("tax_office"), row.text("phone"), row.text("email"), row.text("address"));
+                row.text("tax_office"), row.text("phone"), row.text("email"), row.text("address"),
+                row.text("bill_cycle_code"));
         validate(request);
         return Result.done(customers.upsertByExternalRef(ref, request));
     }

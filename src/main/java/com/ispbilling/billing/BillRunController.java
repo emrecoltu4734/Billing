@@ -13,25 +13,33 @@ import java.util.List;
 public class BillRunController {
 
     private final BillRunService service;
-    private final BillRunRepository billRuns;
 
-    public BillRunController(BillRunService service, BillRunRepository billRuns) {
+    public BillRunController(BillRunService service) {
         this.service = service;
-        this.billRuns = billRuns;
     }
 
-    /** Örnek gövde: {"period": "2026-11"} */
-    public record RunRequest(@NotNull YearMonth period) {
+    /**
+     * Örnek gövde: {"period": "2026-11"} veya {"cycleCode": "C15", "period": "2026-11"}.
+     * cycleCode boşsa varsayılan fatura dönemi. Yarım kalmış veya hatalarla bitmiş dönem tekrar
+     * gönderilirse kaldığı yerden devam eder.
+     */
+    public record RunRequest(String cycleCode, @NotNull YearMonth period) {
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public BillRun run(@Valid @RequestBody RunRequest r) {
-        return service.run(r.period());
+    public BillRunView run(@Valid @RequestBody RunRequest r) {
+        return service.run(r.cycleCode(), r.period());
     }
 
     @GetMapping
-    public List<BillRun> list() {
-        return billRuns.findAllByOrderByPeriodStartDesc();
+    public List<BillRunView> list() {
+        return service.list();
+    }
+
+    /** Çalıştırma ayrıntısı ve faturalanamayan aboneler. */
+    @GetMapping("/{id}")
+    public BillRunView get(@PathVariable Long id) {
+        return service.get(id);
     }
 }

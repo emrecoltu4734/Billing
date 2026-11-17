@@ -13,7 +13,6 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultMatcher;
-import org.springframework.transaction.annotation.Transactional;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -27,13 +26,21 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@Transactional
 @WithMockUser
 @Import(TestClockConfig.class)
 class BillingFlowIntegrationTest {
 
     @Autowired
     MockMvc mvc;
+    @Autowired
+    org.springframework.jdbc.core.simple.JdbcClient testJdbc;
+
+    @org.junit.jupiter.api.BeforeEach
+    @org.junit.jupiter.api.AfterEach
+    void resetDatabase() {
+        com.ispbilling.TestDatabase.reset(testJdbc);
+    }
+
     @Autowired
     ObjectMapper json;
     @Autowired

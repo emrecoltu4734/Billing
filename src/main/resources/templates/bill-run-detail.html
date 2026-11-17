@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::section}, 'bill-runs')}">
+<head><title>Faturalandırma · ISP360</title></head>
+<body>
+<section>
+    <header class="page-head">
+        <div>
+            <p class="crumb"><a th:href="@{/bill-runs}">Fatura dönemleri</a> / <span th:text="${run.cycleName}"></span></p>
+            <h1>
+                <span th:text="|${@fmt.date(run.periodStart)} – ${@fmt.date(run.periodEnd)}|"></span>
+                <span class="badge" th:classappend="${'badge-' + @fmt.tone(run.status)}" th:text="${@fmt.label(run.status)}"></span>
+            </h1>
+        </div>
+        <form th:if="${run.status.name() != 'COMPLETED'}" th:action="@{/bill-runs/{id}/resume(id=${run.id})}" method="post">
+            <button type="submit" class="btn btn-primary">Kalan aboneleri yeniden dene</button>
+        </form>
+    </header>
+
+    <div class="stats">
+        <div class="stat"><div class="stat-label">Kesilen fatura</div><div class="stat-value" th:text="${run.invoiceCount}"></div></div>
+        <div class="stat"><div class="stat-label">Toplam tutar</div><div class="stat-value" th:text="${@fmt.money(run.totalAmount)}"></div></div>
+        <div class="stat" th:classappend="${run.errorCount > 0} ? 'stat-alert'">
+            <div class="stat-label">Faturalanamayan abone</div><div class="stat-value" th:text="${run.errorCount}"></div>
+        </div>
+        <div class="stat"><div class="stat-label">Çalışma</div>
+            <div class="stat-sub" th:text="|Başladı: ${@fmt.dateTime(run.startedAt)}|"></div>
+            <div class="stat-sub" th:text="|Bitti: ${@fmt.dateTime(run.finishedAt)}|"></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-head"><h2>Faturalanamayan aboneler</h2></div>
+        <p class="empty" th:if="${run.errors.isEmpty()}">Tüm aboneler faturalandı.</p>
+        <table th:unless="${run.errors.isEmpty()}">
+            <thead><tr><th>Abone</th><th>Hata</th><th>Zaman</th></tr></thead>
+            <tbody>
+            <tr th:each="e : ${run.errors}">
+                <td><a th:href="@{/customers/{id}(id=${e.customerId})}" th:text="${e.customerName}"></a>
+                    <span class="muted mono" th:text="${e.customerNo}"></span></td>
+                <td th:text="${e.message}"></td>
+                <td th:text="${@fmt.dateTime(e.createdAt)}"></td>
+            </tr>
+            </tbody>
+        </table>
+        <p class="hint" th:unless="${run.errors.isEmpty()}">Sorunu giderdikten sonra "Kalan aboneleri yeniden dene"ye basın.
+            Faturası kesilmiş aboneler tekrar faturalanmaz.</p>
+    </div>
+</section>
+</body>
+</html>

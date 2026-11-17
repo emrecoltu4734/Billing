@@ -31,4 +31,13 @@ public class CustomerController {
     public Customer get(@PathVariable Long id) {
         return service.get(id);
     }
+
+    public record ChangeBillCycleRequest(@jakarta.validation.constraints.NotBlank String billCycleCode) {
+    }
+
+    /** Aboneyi başka bir fatura dönemine taşır. */
+    @PutMapping("/{id}/bill-cycle")
+    public Customer changeBillCycle(@PathVariable Long id, @Valid @RequestBody ChangeBillCycleRequest r) {
+        return service.changeBillCycle(id, r.billCycleCode());
+    }
 }

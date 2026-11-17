@@ -13,5 +13,7 @@ public record CreateCustomerRequest(
         String taxOffice,
         String phone,
         @Email(message = "Geçerli bir e-posta girin") String email,
-        String address) {
+        String address,
+        /** Boşsa varsayılan fatura dönemi */
+        String billCycleCode) {
 }

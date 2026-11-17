@@ -59,11 +59,7 @@ class ImportIntegrationTest {
     /** Diğer test sınıfları geri almaya (rollback) güvendiği için arkada veri bırakılmaz. */
     @AfterEach
     void truncateAll() {
-        jdbc.sql("""
-                truncate in_customer, in_subscription_event, in_payment,
-                         payment, invoice_line, invoice, bill_run, subscription, customer, plan
-                restart identity cascade
-                """).update();
+        com.ispbilling.TestDatabase.reset(jdbc);
     }
 
     @Test
@@ -155,6 +151,28 @@ class ImportIntegrationTest {
 
         var sub = jdbc.sql("select status, end_date::text as end_date from subscription").query().singleRow();
         assertThat(sub).containsEntry("status", "TERMINATED").containsEntry("end_date", "2026-11-10");
+    }
+
+    @Test
+    void customerCanBeAssignedToBillCycle() {
+        jdbc.sql("insert into bill_cycle (code, name, cycle_day) values ('C15', 'Ayın 15''i', 15)").update();
+        jdbc.sql("insert into in_customer (external_ref, type, name, tax_id, bill_cycle_code) values "
+                 + "('CRM-1', 'INDIVIDUAL', 'On Beş', '12345678901', 'C15'), "
+                 + "('CRM-2', 'INDIVIDUAL', 'Varsayılan', '12345678901', null), "
+                 + "('CRM-3', 'INDIVIDUAL', 'Bilinmeyen', '12345678901', 'C99')").update();
+        importService.runAll();
+        // Güncellemede bill_cycle_code boşsa mevcut dönem korunur
+        jdbc.sql("insert into in_customer (external_ref, type, name, tax_id) values ('CRM-1', 'INDIVIDUAL', 'On Beş', '12345678901')").update();
+        importService.runAll();
+
+        assertThat(cycleOf("CRM-1")).isEqualTo("C15");
+        assertThat(cycleOf("CRM-2")).isEqualTo("C01");
+        assertError("in_customer", 3, "NOT_FOUND", "Fatura dönemi bulunamadı: C99");
+    }
+
+    private String cycleOf(String externalRef) {
+        return jdbc.sql("select b.code from customer c join bill_cycle b on b.id = c.bill_cycle_id where c.external_ref = ?")
+                .param(externalRef).query(String.class).single();
     }
 
     @Test

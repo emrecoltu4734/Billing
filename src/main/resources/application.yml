@@ -32,3 +32,7 @@ billing:
   import:
     enabled: ${BILLING_IMPORT_ENABLED:true}
     interval: ${BILLING_IMPORT_INTERVAL:PT1M}
+  # Otomatik faturalama: her gece, fatura günü gelen ve otomatik çalışması açık fatura dönemleri faturalanır
+  auto-run:
+    enabled: ${BILLING_AUTO_RUN_ENABLED:true}
+    cron: ${BILLING_AUTO_RUN_CRON:0 30 2 * * *}

@@ -10,7 +10,6 @@ import org.springframework.context.annotation.Import;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.transaction.annotation.Transactional;
 
 import static org.hamcrest.Matchers.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestBuilders.formLogin;
@@ -24,12 +23,20 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@Transactional
 @Import(TestClockConfig.class)
 class PanelIntegrationTest {
 
     @Autowired
     MockMvc mvc;
+    @Autowired
+    org.springframework.jdbc.core.simple.JdbcClient testJdbc;
+
+    @org.junit.jupiter.api.BeforeEach
+    @org.junit.jupiter.api.AfterEach
+    void resetDatabase() {
+        com.ispbilling.TestDatabase.reset(testJdbc);
+    }
+
 
     @Nested
     class Security {
@@ -96,9 +103,9 @@ class PanelIntegrationTest {
         // Fatura kes
         mvc.perform(post("/bill-runs").with(csrf()).param("period", "2026-11"))
                 .andExpect(redirectedUrl("/bill-runs"))
-                .andExpect(flash().attribute("success", "Kasım 2026 dönemi faturalandı: 1 fatura"));
+                .andExpect(flash().attribute("success", "Ayın 1'i · Kasım 2026 dönemi faturalandı: 1 fatura"));
         mvc.perform(post("/bill-runs").with(csrf()).param("period", "2026-11"))
-                .andExpect(flash().attribute("error", "Kasım 2026 dönemi zaten faturalandı"));
+                .andExpect(flash().attribute("error", "Kasım 2026 dönemi (Ayın 1'i) zaten faturalandı"));
 
         mvc.perform(get("/invoices"))
                 .andExpect(status().isOk())
@@ -135,7 +142,7 @@ class PanelIntegrationTest {
                 .andExpect(content().string(containsString("Aylık tekrarlayan gelir")));
         mvc.perform(get("/overdue")).andExpect(status().isOk());
         mvc.perform(get("/bill-runs")).andExpect(status().isOk())
-                .andExpect(content().string(containsString("Kasım 2026")));
+                .andExpect(content().string(containsString("01.11.2026 – 30.11.2026")));
         mvc.perform(get("/customers").param("q", "ayşe"))
                 .andExpect(content().string(containsString("Ayşe Yılmaz")));
     }

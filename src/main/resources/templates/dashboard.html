@@ -66,7 +66,9 @@
                 <thead><tr><th>Dönem</th><th class="num">Fatura</th><th class="num">Tutar</th></tr></thead>
                 <tbody>
                 <tr th:each="r : ${billRuns}">
-                    <td th:text="${@fmt.period(r.periodStart)}"></td>
+                    <td><a th:href="@{/bill-runs/{id}(id=${r.id})}" th:text="${@fmt.period(r.periodStart)}"></a>
+                        <span class="muted" th:text="${r.cycleName}"></span>
+                        <span class="badge badge-red" th:if="${r.errorCount > 0}" th:text="|${r.errorCount} hata|"></span></td>
                     <td class="num" th:text="${r.invoiceCount}"></td>
                     <td class="num" th:text="${@fmt.money(r.totalAmount)}"></td>
                 </tr>

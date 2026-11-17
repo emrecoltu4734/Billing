@@ -30,6 +30,11 @@ public class Customer {
     /** Müşteri (İSS) sistemindeki abone kimliği; entegrasyonla gelen kayıtlarda dolu. */
     private String externalRef;
 
+    /** Küçük bir tablo; abone listelerinde ve JSON'da hep gerektiği için hemen yüklenir. */
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private com.ispbilling.billing.BillCycle billCycle;
+
     @Column(insertable = false, updatable = false)
     @Generated(event = EventType.INSERT)
     private OffsetDateTime createdAt;
@@ -60,6 +65,10 @@ public class Customer {
         this.address = address;
     }
 
+    public void assignBillCycle(com.ispbilling.billing.BillCycle billCycle) {
+        this.billCycle = billCycle;
+    }
+
     void setExternalRef(String externalRef) {
         this.externalRef = externalRef;
     }
@@ -75,4 +84,6 @@ public class Customer {
     public String getAddress() { return address; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public String getExternalRef() { return externalRef; }
+    public String getBillCycleCode() { return billCycle.getCode(); }
+    public String getBillCycleName() { return billCycle.getName(); }
 }
