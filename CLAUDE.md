@@ -34,6 +34,8 @@ BILLING_ADMIN_PASSWORD=demo1234 mvn spring-boot:run -Dspring-boot.run.profiles=d
 - Şema değişikliği yalnızca yeni Flyway migration ile (`V<n>__açıklama.sql`); eski migration düzenlenmez.
 - Kesinleşmiş finansal kayıtlar silinmez/güncellenmez; düzeltme ters kayıtla.
 - Kullanıcıya görünen metinler, hata mesajları ve kod yorumları Türkçe.
+- Fatura kesinleştirme yalnızca `BillRunService.finalizeDrafts` içinde: numara, bağlantı anahtarı ve gönderim
+  kaydı (outbox) aynı transaction'da. `/f/**` girişsiz abone sayfasıdır; buraya kişisel veri eklerken maskeleyin.
 - Import satır işleyicileri core'a yalnızca servisler üzerinden yazar; satır başına ayrı transaction.
   Import testleri commit ettiği için rollback kullanmaz, `@BeforeEach`/`@AfterEach` ile tabloları temizler.
 - Her davranış değişikliğine test: hesaplama için birim testi, akış için `*IntegrationTest` (MockMvc + gerçek PostgreSQL).

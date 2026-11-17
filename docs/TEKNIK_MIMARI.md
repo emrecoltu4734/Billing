@@ -286,7 +286,12 @@ ticari çekirdeğidir.
   iletilir. Rapordaki numara aralığı, entegratör tarafındaki kayıtlarla karşılaştırılabilir.
   ISP360 entegratörün bayi/iş ortağı olursa bu kontrol doğrudan yapılabilir.
 
-### 5.4 Lisans süresi dolduğunda
+### 5.4 Kullanım sayacının bağlanacağı nokta
+
+Fatura kesinleştirme tek bir yerde (`BillRunService.finalizeDrafts`) ve tek transaction'da yapılır. Lisans
+kullanım sayacı ve hash zinciri (Faz 3) buraya eklenecektir.
+
+### 5.5 Lisans süresi dolduğunda
 
 İSS'nin faturalandırmasını aniden durdurmak, son kullanıcılara (abonelere) zarar verir ve ticari
 ilişkiyi bozar. Bu nedenle yaptırım kademelidir:
@@ -315,7 +320,9 @@ denetim hakkı, cezai şart).
 | `bill_cycle` | Fatura dönemleri (gün 1–28, varsayılan, otomatik çalışma) |
 | `bill_run` | Toplu faturalandırma çalıştırmaları (cycle + dönem başına tekil) |
 | `bill_run_error` | Çalıştırmada faturalanamayan aboneler ve nedenleri |
-| `invoice` / `invoice_line` | Faturalar ve kalemleri |
+| `invoice` / `invoice_line` | Faturalar (DRAFT → ISSUED, numara ve bağlantı anahtarı kesinleşmede) ve kalemleri |
+| `invoice_number_series` | Yıl bazında boşluksuz fatura numarası sayacı |
+| `notification` | E-posta/SMS gönderim kuyruğu (outbox), deneme sayısı ve son hata |
 | `payment` | Tahsilatlar (şu an tek faturaya bağlı) |
 | `app_user` | Panel kullanıcıları |
 | `in_customer` | Giriş tablosu: abone ekleme/güncelleme |
@@ -549,6 +556,30 @@ public interface NetworkAdapter {
 Entegrasyon kimlik bilgileri veritabanında şifreli saklanır; şifreleme anahtarı kurulumun ortam
 değişkenindedir. RADIUS'a ulaşılamaması faturalandırmayı etkilemez.
 
+### Aboneye fatura iletimi
+
+```mermaid
+flowchart LR
+    RUN[Bill run biter] --> FIN[Taslaklar kesinleşir<br/>numara + bağlantı anahtarı]
+    FIN -->|aynı transaction| OUT[(notification<br/>outbox)]
+    OUT --> JOB[Gönderim işi<br/>dakikada bir]
+    JOB --> MAIL[SMTP<br/>İSS'nin sunucusu]
+    JOB --> SMS[SMS sağlayıcısı<br/>HTTP şablonu]
+    MAIL --> SUB[Abone]
+    SMS --> SUB
+    SUB -->|bağlantı| PAGE[/f/anahtar<br/>fatura + hesap durumu/]
+```
+
+- Bağlantı anahtarı 256 bit rastgele değerdir; giriş gerektirmez. Sayfa TCKN/VKN'yi maskeler, önbelleğe
+  alınmaz ve arama motorlarına kapalıdır.
+- **Kurulumda internete yalnızca `/f/**` ve `/css/**` açılır**; panel ve API iç ağda kalır (ters vekil kuralı).
+- SMS metni Türkçe karakter içermez: Türkçe karakter tek SMS sınırını 160'tan 70 karaktere düşürür.
+- Gönderim içeriği gönderim anında üretilir; tutarlar o anki hesap durumunu yansıtır.
+- Bu sayfa ve e-posta **fatura bilgilendirmesidir**; resmi e-Arşiv belgesi özel entegratör bağlantısıyla
+  (Faz 6) üretilecektir.
+- Fatura bilgilendirme SMS'leri ticari ileti değildir; İYS onayı gerektirmediği mevzuat kontrolünde
+  doğrulanmalıdır (§16).
+
 ------------------------------------------------------------------------
 
 ## 11. Uygulama güvenliği
@@ -639,7 +670,11 @@ veya ek ücretlidir.
 | Faturalı döneme geriye dönük sonlandırma | Reddedilir (iade faturası Faz 5) | ✔ |
 | V3 verisi olan kurulumun V4'e yükseltilmesi | Aboneler varsayılan cycle'a, `billed_through` eski faturalardan | ✔ (elle doğrulandı) |
 | RADIUS bağlantısının kesilmesi | Faturalandırmanın etkilenmemesi | ◻ |
-| Lisans süresinin dolması | Kademeli yaptırım (§5.4) | ◻ |
+| Lisans süresinin dolması | Kademeli yaptırım (§5.5) | ◻ |
+| Hatalı abone / kesinleştirme hatası | Fatura numarasında boşluk oluşmaması | ✔ |
+| Gönderim hatası | Artan aralıkla 5 deneme, sonra FAILED; panelden yeniden gönderim | ✔ |
+| Abone fatura sayfası | Girişsiz açılır, TCKN maskeli, güncel borç; bilinmeyen anahtar 404, panel kapalı kalır | ✔ |
+| SMS sağlayıcısı hatası | Hata mesajında şifre/URL sızmaması | ✔ |
 | Veritabanında fatura silinmesi | Hash zincirinin bozulduğunun tespiti | ◻ |
 | Güncelleme sırasında migration hatası | Yedekten geri dönüş | ◻ |
 | 10.000 abonelik Billing Run | Kabul edilebilir sürede tamamlanma | ◻ |
@@ -707,9 +742,13 @@ Tek geliştirici için hedef takvimdir. Entegrasyon, mevzuat ve pilot testleri s
 - [x] Abonelik bazında `billed_through`: cycle değişikliğinde aynı gün iki kez faturalanmaz
 - [x] Abone başına transaction; hatalı abone run'ı durdurmaz (`bill_run_error`), aynı dönem tekrar çalıştırılınca kaldığı yerden devam eder
 - [x] Cycle bazında açılan zamanlanmış otomatik Billing Run (fatura gününde gece)
-- [ ] Billing Item + fatura taslağı → kontrol → kesinleştirme
-- [ ] Fatura numarasının kesinleştirmede verilmesi (şu an hatalı abonede sıra numarasında boşluk oluşabilir)
-- [ ] Fatura çıktısı: PDF, toplu baskı/gönderim dosyası, e-posta ile gönderim
+- [x] Taslak fatura → çalıştırma sonunda otomatik kesinleştirme (onay adımı yok; karar: fatura batch bitince aboneye gider)
+- [x] Boşluksuz, yıl bazında fatura numarası (`invoice_number_series`, kesinleştirmede verilir)
+- [x] Abone fatura sayfası `/f/{anahtar}`: fatura, bugün itibarıyla hesap durumu (önceki dönemlerden kalan, toplam borç), geçmiş faturalar; A4 yazdırma/PDF, mobil uyumlu
+- [x] E-posta (SMTP) ve SMS (sağlayıcıdan bağımsız HTTP şablonu) gönderimi; outbox, artan aralıklı yeniden deneme, panelden yeniden gönderme
+- [ ] Billing Item ara katmanı (hesaplanan kalemlerin faturadan önce saklanması)
+- [ ] Sunucu tarafında PDF dosyası üretimi ve e-postaya ek; toplu baskı dosyası
+- [ ] Abone bazında gönderim tercihi (e-posta / SMS / hiçbiri)
 - [ ] Çıkış (out_*) tabloları veya API ile kesinleşen faturaların müşteri sistemine geri verilmesi
 - [ ] `job_execution` tablosu ve panelde iş geçmişi (bill run geçmişi ✔, import ve diğer işler ◻)
 
@@ -776,6 +815,7 @@ Canlıya çıkmadan önce uzman değerlendirmesiyle doğrulanmalıdır:
 - BTK elektronik haberleşme ve tüketici yükümlülükleri (abonelik sözleşmesi, askıya alma, iptal)
 - GİB e-Fatura ve e-Arşiv süreçleri (ilk sürümde özel entegratörle)
 - ÖİV ve KDV oranları, ÖİV'in KDV matrahına dahil olması
+- Fatura bilgilendirme SMS/e-postalarının İYS (İleti Yönetim Sistemi) kapsamı dışında kaldığı
 - KVKK: İSS veri sorumlusu, ISP360 uzaktan destekte veri işleyen; veri işleme sözleşmesi
 - Finansal kayıtların saklama süreleri
 - Ödeme kuruluşu ve webhook güvenliği

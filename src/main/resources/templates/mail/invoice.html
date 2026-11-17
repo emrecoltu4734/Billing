@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="tr" xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="utf-8"><title th:text="${doc.company.name}">Fatura</title></head>
+<body style="margin:0;background:#eef0f3;font-family:Arial,Helvetica,sans-serif;color:#1d2330;" th:with="inv=${doc.invoice}">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eef0f3;padding:24px 0;">
+<tr><td align="center">
+<table role="presentation" width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:10px;padding:28px;">
+    <tr><td style="font-size:18px;font-weight:bold;" th:text="${doc.company.name}">İSS</td></tr>
+    <tr><td style="padding-top:18px;font-size:15px;">
+        Sayın <strong th:text="${inv.customerName}"></strong>,<br><br>
+        <span th:text="|${periodName} dönemine ait faturanız kesilmiştir.|"></span>
+    </td></tr>
+    <tr><td style="padding-top:18px;">
+        <table role="presentation" width="100%" cellpadding="8" cellspacing="0" style="background:#fff6e5;border-radius:8px;font-size:14px;">
+            <tr><td>Fatura tutarı</td><td align="right"><strong th:text="${@fmt.money(inv.totalAmount)}"></strong></td></tr>
+            <tr><td>Son ödeme tarihi</td><td align="right" th:text="${@fmt.date(inv.dueDate)}"></td></tr>
+            <tr th:if="${doc.previousBalance().signum() > 0}"><td>Önceki dönemlerden kalan</td>
+                <td align="right" th:text="${@fmt.money(doc.previousBalance())}"></td></tr>
+            <tr><td><strong>Toplam borcunuz</strong></td><td align="right"><strong th:text="${@fmt.money(doc.totalDue)}"></strong></td></tr>
+        </table>
+    </td></tr>
+    <tr><td align="center" style="padding-top:22px;">
+        <a th:href="${inv.viewUrl}" style="display:inline-block;background:#2457d6;color:#ffffff;text-decoration:none;font-weight:bold;padding:12px 22px;border-radius:8px;">Faturayı görüntüle</a>
+    </td></tr>
+    <tr><td style="padding-top:14px;font-size:12px;color:#6b7385;" th:if="${doc.company.iban}">
+        Havale/EFT: <span th:text="${doc.company.iban}"></span> · açıklamaya abone numaranızı (<span th:text="${doc.customerNo}"></span>) yazınız.
+    </td></tr>
+    <tr><td style="padding-top:20px;font-size:12px;color:#6b7385;border-top:1px solid #e3e6eb;">
+        Fatura no: <span th:text="${inv.invoiceNo}"></span> · Hizmet dönemi:
+        <span th:text="|${@fmt.date(inv.periodStart)} – ${@fmt.date(inv.periodEnd)}|"></span><br>
+        Bu e-posta bilgilendirme amaçlıdır; resmi e-Arşiv faturanız ayrıca iletilir.
+    </td></tr>
+</table>
+</td></tr>
+</table>
+</body>
+</html>

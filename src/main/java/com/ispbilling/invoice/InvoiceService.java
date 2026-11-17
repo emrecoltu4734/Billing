@@ -20,15 +20,17 @@ public class InvoiceService {
 
     private final InvoiceRepository invoices;
     private final Clock clock;
+    private final String baseUrl;
 
-    public InvoiceService(InvoiceRepository invoices, Clock clock) {
+    public InvoiceService(InvoiceRepository invoices, Clock clock, com.ispbilling.common.BillingProperties props) {
         this.invoices = invoices;
         this.clock = clock;
+        this.baseUrl = props.publicBaseUrl();
     }
 
     public InvoiceView get(Long id) {
         Invoice i = invoices.findById(id).orElseThrow(() -> new NotFoundException("Fatura", id));
-        return InvoiceView.of(i, today(), true);
+        return InvoiceView.of(i, today(), true, baseUrl);
     }
 
     public java.util.Optional<Long> findIdByInvoiceNo(String invoiceNo) {
@@ -37,12 +39,12 @@ public class InvoiceService {
 
     public List<InvoiceView> listByCustomer(Long customerId) {
         LocalDate today = today();
-        return invoices.findByCustomerId(customerId).stream().map(i -> InvoiceView.of(i, today, false)).toList();
+        return invoices.findByCustomerId(customerId).stream().map(i -> InvoiceView.of(i, today, false, baseUrl)).toList();
     }
 
     public List<InvoiceView> overdue() {
         LocalDate today = today();
-        return invoices.findOverdue(today, OPEN_STATUSES).stream().map(i -> InvoiceView.of(i, today, false)).toList();
+        return invoices.findOverdue(today, OPEN_STATUSES).stream().map(i -> InvoiceView.of(i, today, false, baseUrl)).toList();
     }
 
     /** statuses boşsa tüm faturalar. */
@@ -51,7 +53,7 @@ public class InvoiceService {
         Page<Invoice> page = statuses == null || statuses.isEmpty()
                 ? invoices.findAllWithCustomer(pageable)
                 : invoices.findByStatusIn(statuses, pageable);
-        return page.map(i -> InvoiceView.of(i, today, false));
+        return page.map(i -> InvoiceView.of(i, today, false, baseUrl));
     }
 
     private LocalDate today() {

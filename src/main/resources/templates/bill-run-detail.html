@@ -22,6 +22,10 @@
         <div class="stat" th:classappend="${run.errorCount > 0} ? 'stat-alert'">
             <div class="stat-label">Faturalanamayan abone</div><div class="stat-value" th:text="${run.errorCount}"></div>
         </div>
+        <div class="stat" th:classappend="${delivery.FAILED > 0} ? 'stat-alert'"><div class="stat-label">Aboneye gönderim</div>
+            <div class="stat-value" th:text="${delivery.SENT}"></div>
+            <div class="stat-sub" th:text="|gönderildi · ${delivery.PENDING} bekliyor · ${delivery.FAILED} başarısız|"></div>
+        </div>
         <div class="stat"><div class="stat-label">Çalışma</div>
             <div class="stat-sub" th:text="|Başladı: ${@fmt.dateTime(run.startedAt)}|"></div>
             <div class="stat-sub" th:text="|Bitti: ${@fmt.dateTime(run.finishedAt)}|"></div>

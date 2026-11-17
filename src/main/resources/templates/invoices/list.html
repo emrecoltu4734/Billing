@@ -15,7 +15,7 @@
             <thead><tr><th>Fatura no</th><th>Abone</th><th>Dönem</th><th>Son ödeme</th><th class="num">Tutar</th><th class="num">Kalan</th><th>Durum</th></tr></thead>
             <tbody>
             <tr th:each="i : ${page.content}">
-                <td><a class="mono" th:href="@{/invoices/{id}(id=${i.id})}" th:text="${i.invoiceNo}"></a></td>
+                <td><a class="mono" th:href="@{/invoices/{id}(id=${i.id})}" th:text="${i.invoiceNo ?: 'Taslak'}"></a></td>
                 <td><a th:href="@{/customers/{id}(id=${i.customerId})}" th:text="${i.customerName}"></a></td>
                 <td th:text="${@fmt.period(i.periodStart)}"></td>
                 <td th:text="${@fmt.date(i.dueDate)}" th:classappend="${i.overdue} ? 'text-danger'"></td>

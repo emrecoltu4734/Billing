@@ -9,6 +9,8 @@ import com.ispbilling.customer.CustomerRepository;
 import com.ispbilling.invoice.Invoice;
 import com.ispbilling.invoice.InvoiceNumberGenerator;
 import com.ispbilling.invoice.InvoiceRepository;
+import com.ispbilling.invoice.InvoiceStatus;
+import com.ispbilling.notification.NotificationService;
 import com.ispbilling.plan.Plan;
 import com.ispbilling.subscription.Subscription;
 import com.ispbilling.subscription.SubscriptionRepository;
@@ -61,11 +63,14 @@ public class BillRunService {
     private final Clock clock;
     private final TransactionTemplate tx;
     private final AtomicBoolean running = new AtomicBoolean(false);
+    private final NotificationService notifications;
+    private static final java.security.SecureRandom RANDOM = new java.security.SecureRandom();
 
     public BillRunService(BillRunRepository billRuns, BillCycleService cycles, SubscriptionRepository subscriptions,
                           CustomerRepository customers, InvoiceRepository invoices,
                           InvoiceNumberGenerator invoiceNumbers, JdbcClient jdbc, BillingProperties props,
-                          Clock clock, PlatformTransactionManager txManager) {
+                          Clock clock, PlatformTransactionManager txManager, NotificationService notifications) {
+        this.notifications = notifications;
         this.billRuns = billRuns;
         this.cycles = cycles;
         this.subscriptions = subscriptions;
@@ -173,6 +178,8 @@ public class BillRunService {
             }
         }
 
+        finalizeDrafts(runId);
+
         BillRunView result = tx.execute(s -> {
             BillRun run = billRuns.findWithCycle(runId).orElseThrow();
             var totals = jdbc.sql("select count(*) as n, coalesce(sum(total_amount), 0) as total from invoice where bill_run_id = :id")
@@ -186,6 +193,27 @@ public class BillRunService {
         log.info("Fatura çalıştırması bitti: {} {} → {} fatura, {} TL, {} hata", cycle.getCode(), period,
                 result.invoiceCount(), result.totalAmount(), result.errorCount());
         return result;
+    }
+
+    /**
+     * Çalıştırmanın taslak faturalarını tek transaction'da kesinleştirir: boşluksuz numara, abone bağlantı
+     * anahtarı ve e-posta/SMS kayıtları birlikte oluşur. Başarısız olursa taslaklar kalır; aynı dönem tekrar
+     * çalıştırıldığında yeniden denenir.
+     */
+    private void finalizeDrafts(Long runId) {
+        tx.executeWithoutResult(s -> {
+            OffsetDateTime now = OffsetDateTime.now(clock);
+            for (Invoice invoice : invoices.findByRunAndStatus(runId, InvoiceStatus.DRAFT)) {
+                invoice.finalizeWith(invoiceNumbers.next(invoice.getIssueDate()), newViewToken(), now);
+                notifications.enqueue(invoice);
+            }
+        });
+    }
+
+    private static String newViewToken() {
+        byte[] bytes = new byte[32];
+        RANDOM.nextBytes(bytes);
+        return java.util.HexFormat.of().formatHex(bytes);
     }
 
     /** Cycle'daki, dönemde faturalanacak günü kalmış ve bu dönem faturası olmayan aboneler. */
@@ -209,8 +237,7 @@ public class BillRunService {
     private void billCustomer(Long runId, Long customerId, LocalDate periodStart, LocalDate periodEnd,
                               LocalDate issueDate, LocalDate dueDate) {
         Customer customer = customers.findById(customerId).orElseThrow(() -> new NotFoundException("Abone", customerId));
-        Invoice invoice = new Invoice(invoiceNumbers.next(issueDate), customer, billRuns.getReferenceById(runId),
-                periodStart, periodEnd, issueDate, dueDate);
+        Invoice invoice = new Invoice(customer, billRuns.getReferenceById(runId), periodStart, periodEnd, issueDate, dueDate);
         for (Subscription s : subscriptions.findBillableForCustomer(customerId, periodStart, periodEnd)) {
             // Daha önce faturalanan günler atlanır (ör. cycle değişikliği sonrası)
             LocalDate from = s.getStartDate();

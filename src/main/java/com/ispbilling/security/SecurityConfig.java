@@ -36,6 +36,8 @@ public class SecurityConfig {
         return http
                 .authorizeHttpRequests(a -> a
                         .requestMatchers("/login", "/css/**", "/favicon.ico", "/error").permitAll()
+                        // Abone fatura sayfası: bağlantıdaki 256 bitlik rastgele anahtar yetki yerine geçer
+                        .requestMatchers("/f/**").permitAll()
                         .anyRequest().authenticated())
                 .formLogin(f -> f.loginPage("/login").defaultSuccessUrl("/", true).permitAll())
                 .logout(l -> l.logoutSuccessUrl("/login?logout").permitAll())

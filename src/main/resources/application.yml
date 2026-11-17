@@ -19,6 +19,18 @@ springdoc:
   paths-to-match: /api/v1/**
 
 billing:
+  # Abonelerin fatura bağlantısını açacağı adres (yalnızca /f/** internete açılır)
+  public-base-url: ${BILLING_PUBLIC_BASE_URL:http://localhost:8080}
+  # Faturada görünen İSS bilgileri
+  company:
+    name: ${BILLING_COMPANY_NAME:Örnek İnternet Hizmetleri}
+    address: ${BILLING_COMPANY_ADDRESS:}
+    tax-office: ${BILLING_COMPANY_TAX_OFFICE:}
+    tax-id: ${BILLING_COMPANY_TAX_ID:}
+    phone: ${BILLING_COMPANY_PHONE:}
+    email: ${BILLING_COMPANY_EMAIL:}
+    website: ${BILLING_COMPANY_WEBSITE:}
+    iban: ${BILLING_COMPANY_IBAN:}
   # Fatura numarası öneki (e-Arşiv formatında 3 karakter: ABC2026000000001)
   invoice-prefix: ISP
   # Son ödeme günü = fatura tarihi + bu kadar gün
@@ -36,3 +48,21 @@ billing:
   auto-run:
     enabled: ${BILLING_AUTO_RUN_ENABLED:true}
     cron: ${BILLING_AUTO_RUN_CRON:0 30 2 * * *}
+  # Fatura kesinleşince aboneye e-posta / SMS
+  notification:
+    dispatch-enabled: ${BILLING_NOTIFICATION_DISPATCH:true}
+    interval: PT1M
+    email:
+      mode: ${BILLING_EMAIL_MODE:off}          # off | log | smtp  (smtp: spring.mail.host/port/username/password)
+      from: ${BILLING_EMAIL_FROM:}
+    sms:
+      mode: ${BILLING_SMS_MODE:off}            # off | log | http
+      http:
+        url: ${BILLING_SMS_URL:}               # yer tutucular: {phone} {message} {username} {password} {sender}
+        method: ${BILLING_SMS_METHOD:GET}
+        body: ${BILLING_SMS_BODY:}
+        content-type: ${BILLING_SMS_CONTENT_TYPE:application/x-www-form-urlencoded}
+        success-pattern: ${BILLING_SMS_SUCCESS_PATTERN:}
+        username: ${BILLING_SMS_USERNAME:}
+        password: ${BILLING_SMS_PASSWORD:}
+        sender: ${BILLING_SMS_SENDER:}

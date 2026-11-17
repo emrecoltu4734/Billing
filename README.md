@@ -70,6 +70,35 @@ Veritabanı bağlantısı ortam değişkenleriyle değiştirilebilir: `DB_URL`, 
 | Fatura dönemleri | Birden çok fatura günü (ör. ayın 1'i, 15'i), otomatik faturalama, dönem bazında faturalama, hatalı aboneleri görme ve yeniden deneme |
 | Tarifeler | Tarife ekle (vergiler dahil tutar otomatik gösterilir), satışa aç/kapat |
 | Veri aktarımı | Giriş tablolarının durumu, hatalı kayıtlar ve nedenleri, elle çalıştırma, yeniden deneme |
+| Fatura → Aboneye gönderim | E-posta/SMS durumu, son hata, yeniden gönderme; "Abone görünümü / Yazdır" |
+
+### Abone fatura sayfası
+
+Fatura kesinleşince aboneye `/f/{anahtar}` bağlantısı e-posta/SMS ile gider. Sayfa giriş gerektirmez; faturayı,
+bugün itibarıyla hesap durumunu (önceki dönemlerden kalan, toplam borç) ve geçmiş faturaları gösterir;
+yazdırılabilir (A4) ve mobil uyumludur. **Kurulumda internete yalnızca `/f/**` ve `/css/**` açılmalıdır.**
+
+| Abone fatura sayfası | Mobil |
+|---|---|
+| ![Abone fatura sayfası](docs/screenshots/abone-fatura.png) | ![Mobil](docs/screenshots/abone-fatura-mobil.png) |
+
+### Gönderim ayarları (ortam değişkenleri)
+
+| Değişken | Açıklama |
+|---|---|
+| `BILLING_PUBLIC_BASE_URL` | Abonelerin açacağı adres, ör. `https://fatura.ornekisp.com.tr` |
+| `BILLING_COMPANY_NAME`, `_ADDRESS`, `_TAX_OFFICE`, `_TAX_ID`, `_PHONE`, `_EMAIL`, `_WEBSITE`, `_IBAN` | Faturada görünen İSS bilgileri |
+| `BILLING_EMAIL_MODE` | `off` · `log` · `smtp` |
+| `SPRING_MAIL_HOST`, `SPRING_MAIL_PORT`, `SPRING_MAIL_USERNAME`, `SPRING_MAIL_PASSWORD`, `BILLING_EMAIL_FROM` | SMTP |
+| `BILLING_SMS_MODE` | `off` · `log` · `http` |
+| `BILLING_SMS_URL`, `_METHOD`, `_BODY`, `_CONTENT_TYPE`, `_SUCCESS_PATTERN`, `_USERNAME`, `_PASSWORD`, `_SENDER` | SMS sağlayıcısının HTTP API'si; yer tutucular `{phone}` `{message}` `{username}` `{password}` `{sender}` |
+
+Örnek (GET ile çalışan bir sağlayıcı):
+```bash
+BILLING_SMS_MODE=http
+BILLING_SMS_URL='https://api.saglayici.com/sms/send?usercode={username}&password={password}&gsmno={phone}&message={message}&msgheader={sender}'
+BILLING_SMS_SUCCESS_PATTERN='^00'     # sağlayıcının başarı yanıtı
+```
 
 Tutarlar Türkçe biçimde girilebilir: `1.234,56`, `396,00` veya `396.00`.
 

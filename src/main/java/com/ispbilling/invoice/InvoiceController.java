@@ -9,9 +9,23 @@ import java.util.List;
 public class InvoiceController {
 
     private final InvoiceService service;
+    private final InvoiceDeliveryService delivery;
 
-    public InvoiceController(InvoiceService service) {
+    public InvoiceController(InvoiceService service, InvoiceDeliveryService delivery) {
         this.service = service;
+        this.delivery = delivery;
+    }
+
+    /** Faturanın e-posta/SMS gönderim durumu. */
+    @GetMapping("/{id}/notifications")
+    public List<com.ispbilling.notification.NotificationView> notifications(@PathVariable Long id) {
+        return delivery.list(id);
+    }
+
+    /** Faturayı aboneye yeniden gönderir. */
+    @PostMapping("/{id}/notifications/resend")
+    public java.util.Map<String, Integer> resend(@PathVariable Long id) {
+        return java.util.Map.of("queued", delivery.resend(id));
     }
 
     @GetMapping("/{id}")

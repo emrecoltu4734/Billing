@@ -1,0 +1,55 @@
+* { box-sizing: border-box; }
+body { margin: 0; background: #eef0f3; color: #1d2330; font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+a { color: #2457d6; }
+.toolbar { max-width: 860px; margin: 16px auto 0; display: flex; justify-content: flex-end; padding: 0 12px; }
+.toolbar button { font: inherit; font-weight: 600; padding: 8px 14px; border-radius: 8px; border: 1px solid #cfd4dc; background: #fff; cursor: pointer; }
+.sheet { max-width: 860px; margin: 12px auto 40px; background: #fff; padding: 36px 40px; border-radius: 10px; box-shadow: 0 2px 12px rgba(20,26,42,.06); }
+.sheet > section { margin-top: 24px; }
+h1 { font-size: 20px; }
+h2 { font-size: 14px; text-transform: uppercase; letter-spacing: .04em; color: #4a5263; margin: 0 0 8px; }
+.label { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: #6b7385; font-weight: 600; }
+.muted { color: #6b7385; }
+.strong { font-weight: 700; }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.danger { color: #b42318; }
+.ok { color: #157f4a; font-weight: 600; }
+.head { display: flex; justify-content: space-between; gap: 24px; border-bottom: 2px solid #1d2330; padding-bottom: 16px; }
+.company-name { font-size: 20px; font-weight: 800; }
+.company { font-size: 13px; color: #3a4153; }
+.doc-title { text-align: right; }
+.doc-title .label { font-size: 18px; color: #1d2330; letter-spacing: .12em; }
+.parties { display: flex; justify-content: space-between; gap: 24px; align-items: stretch; }
+.due-box { min-width: 260px; background: #fff6e5; border: 1px solid #f3d6a1; border-radius: 10px; padding: 14px 18px; text-align: right; }
+.due-box.paid { background: #e3f5eb; border-color: #a9dcbf; }
+.due-box .amount { font-size: 28px; font-weight: 800; font-variant-numeric: tabular-nums; margin: 2px 0; }
+.facts { display: flex; gap: 32px; flex-wrap: wrap; padding: 12px 0; border-top: 1px solid #e3e6eb; border-bottom: 1px solid #e3e6eb; }
+.facts div { display: flex; flex-direction: column; }
+.newer { background: #e6edfc; padding: 10px 14px; border-radius: 8px; }
+table { width: 100%; border-collapse: collapse; }
+th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #6b7385; padding: 6px 8px; border-bottom: 1px solid #d5d9e0; }
+td { padding: 8px; border-bottom: 1px solid #eef0f3; }
+tr.current td { background: #f5f7fb; font-weight: 600; }
+.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.totals { margin: 10px 0 0 auto; max-width: 340px; }
+.totals div { display: flex; justify-content: space-between; padding: 3px 8px; }
+.totals dt { color: #6b7385; }
+.totals dd { margin: 0; font-variant-numeric: tabular-nums; }
+.totals .grand { font-weight: 700; border-top: 1px solid #d5d9e0; margin-top: 4px; padding-top: 6px; }
+.totals .grand dt { color: inherit; }
+.totals .big { font-size: 18px; }
+.account { background: #fafbfc; border: 1px solid #e3e6eb; border-radius: 10px; padding: 16px 18px; }
+.pay-info { font-size: 13px; margin: 12px 0 0; }
+.foot { margin-top: 28px; padding-top: 12px; border-top: 1px solid #e3e6eb; font-size: 12px; color: #6b7385; }
+@media (max-width: 640px) {
+    .sheet { padding: 20px 16px; margin: 8px; }
+    .head, .parties { flex-direction: column; }
+    .doc-title, .due-box { text-align: left; }
+    table { font-size: 13px; }
+    .wide-only { display: none; }   /* vergi dökümü aşağıdaki toplamlarda görünür */
+}
+@media print {
+    body { background: #fff; }
+    .no-print { display: none !important; }
+    .sheet { box-shadow: none; margin: 0; max-width: none; padding: 0; }
+    @page { size: A4; margin: 14mm; }
+}

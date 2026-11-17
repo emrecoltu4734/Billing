@@ -87,7 +87,7 @@
             <thead><tr><th>Fatura no</th><th>Dönem</th><th>Son ödeme</th><th class="num">Tutar</th><th class="num">Kalan</th><th>Durum</th></tr></thead>
             <tbody>
             <tr th:each="i : ${invoices}">
-                <td><a class="mono" th:href="@{/invoices/{id}(id=${i.id})}" th:text="${i.invoiceNo}"></a></td>
+                <td><a class="mono" th:href="@{/invoices/{id}(id=${i.id})}" th:text="${i.invoiceNo ?: 'Taslak'}"></a></td>
                 <td th:text="${@fmt.period(i.periodStart)}"></td>
                 <td th:text="${@fmt.date(i.dueDate)}" th:classappend="${i.overdue} ? 'text-danger'"></td>
                 <td class="num" th:text="${@fmt.money(i.totalAmount)}"></td>

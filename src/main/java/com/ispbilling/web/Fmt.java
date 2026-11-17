@@ -91,6 +91,7 @@ public class Fmt {
         if (e == null) return "";
         return switch (e) {
             case InvoiceStatus s -> switch (s) {
+                case DRAFT -> "Taslak";
                 case ISSUED -> "Ödenmedi";
                 case PARTIALLY_PAID -> "Kısmi ödendi";
                 case PAID -> "Ödendi";

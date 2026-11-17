@@ -38,7 +38,13 @@ public class Invoice {
     private BigDecimal paidAmount = BigDecimal.ZERO;
 
     @Enumerated(EnumType.STRING)
-    private InvoiceStatus status = InvoiceStatus.ISSUED;
+    private InvoiceStatus status = InvoiceStatus.DRAFT;
+
+    /** Kesinleşme zamanı */
+    private java.time.OffsetDateTime issuedAt;
+
+    /** Aboneye gönderilen bağlantının tahmin edilemez anahtarı (/f/{viewToken}) */
+    private String viewToken;
 
     @OneToMany(mappedBy = "invoice", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("id")
@@ -47,9 +53,9 @@ public class Invoice {
     protected Invoice() {
     }
 
-    public Invoice(String invoiceNo, Customer customer, BillRun billRun, LocalDate periodStart,
+    /** Taslak fatura; numara {@link #finalizeWith} ile kesinleşirken verilir. */
+    public Invoice(Customer customer, BillRun billRun, LocalDate periodStart,
                    LocalDate periodEnd, LocalDate issueDate, LocalDate dueDate) {
-        this.invoiceNo = invoiceNo;
         this.customer = customer;
         this.billRun = billRun;
         this.periodStart = periodStart;
@@ -72,7 +78,21 @@ public class Invoice {
     }
 
     /** Tahsilatı faturaya uygular. Fazla ödeme kabul edilmez. */
+    /** Taslağı kesinleştirir. Kesinleşen fatura bir daha değiştirilmez; düzeltme iade faturasıyla yapılır. */
+    public void finalizeWith(String invoiceNo, String viewToken, java.time.OffsetDateTime now) {
+        if (status != InvoiceStatus.DRAFT) {
+            throw new BusinessException("Fatura zaten kesinleşmiş: " + this.invoiceNo);
+        }
+        this.invoiceNo = invoiceNo;
+        this.viewToken = viewToken;
+        this.issuedAt = now;
+        this.status = InvoiceStatus.ISSUED;
+    }
+
     public void applyPayment(BigDecimal amount) {
+        if (status == InvoiceStatus.DRAFT) {
+            throw new BusinessException("Taslak faturaya ödeme alınamaz");
+        }
         if (status == InvoiceStatus.CANCELLED || status == InvoiceStatus.PAID) {
             throw new BusinessException("Fatura ödemeye kapalı: " + invoiceNo + " (" + status + ")");
         }
@@ -96,5 +116,7 @@ public class Invoice {
     public BigDecimal getTotalAmount() { return totalAmount; }
     public BigDecimal getPaidAmount() { return paidAmount; }
     public InvoiceStatus getStatus() { return status; }
+    public java.time.OffsetDateTime getIssuedAt() { return issuedAt; }
+    public String getViewToken() { return viewToken; }
     public List<InvoiceLine> getLines() { return lines; }
 }

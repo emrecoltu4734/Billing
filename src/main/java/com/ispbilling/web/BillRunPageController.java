@@ -22,8 +22,11 @@ public class BillRunPageController extends PageSupport {
 
     private final BillCycleService cycles;
     private final BillRunService billRuns;
+    private final com.ispbilling.notification.NotificationService notifications;
 
-    public BillRunPageController(BillCycleService cycles, BillRunService billRuns) {
+    public BillRunPageController(BillCycleService cycles, BillRunService billRuns,
+                                 com.ispbilling.notification.NotificationService notifications) {
+        this.notifications = notifications;
         this.cycles = cycles;
         this.billRuns = billRuns;
     }
@@ -62,6 +65,7 @@ public class BillRunPageController extends PageSupport {
     @GetMapping("/bill-runs/{id}")
     String detail(@PathVariable Long id, Model model) {
         model.addAttribute("run", billRuns.get(id));
+        model.addAttribute("delivery", notifications.summaryForRun(id));
         return "bill-run-detail";
     }
 

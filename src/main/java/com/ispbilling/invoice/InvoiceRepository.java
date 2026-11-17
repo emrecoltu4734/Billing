@@ -25,6 +25,15 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
 
     java.util.Optional<Invoice> findByInvoiceNo(String invoiceNo);
 
+    java.util.Optional<Invoice> findByViewToken(String viewToken);
+
+    @Query("select i from Invoice i join fetch i.customer where i.billRun.id = :runId and i.status = :status order by i.customer.id")
+    List<Invoice> findByRunAndStatus(Long runId, InvoiceStatus status);
+
+    /** Abonenin kesinleşmiş faturaları, yeniden eskiye. */
+    @Query("select i from Invoice i where i.customer.id = :customerId and i.status <> :excluded order by i.periodStart desc, i.id desc")
+    List<Invoice> findByCustomerExcluding(Long customerId, InvoiceStatus excluded);
+
     @EntityGraph(attributePaths = "customer")
     Page<Invoice> findByStatusIn(Collection<InvoiceStatus> statuses, Pageable pageable);
 

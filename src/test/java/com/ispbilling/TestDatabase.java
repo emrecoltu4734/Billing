@@ -15,7 +15,7 @@ public final class TestDatabase {
     public static void reset(JdbcClient jdbc) {
         jdbc.sql("""
                 truncate in_customer, in_subscription_event, in_payment,
-                         bill_run_error, payment, invoice_line, invoice, bill_run, subscription, customer, plan
+                         notification, invoice_number_series, bill_run_error, payment, invoice_line, invoice, bill_run, subscription, customer, plan
                 restart identity cascade
                 """).update();
         jdbc.sql("delete from bill_cycle where code <> 'C01'").update();

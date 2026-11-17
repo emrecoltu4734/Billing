@@ -21,11 +21,17 @@ import java.util.Set;
 public class BillingPageController extends PageSupport {
 
     private final InvoiceService invoices;
+    private final com.ispbilling.notification.NotificationService notifications;
+    private final com.ispbilling.invoice.InvoiceDeliveryService notificationsResend;
     private final PaymentService payments;
     private final Clock clock;
     private final Fmt fmt;
 
-    public BillingPageController(InvoiceService invoices, PaymentService payments, Clock clock, Fmt fmt) {
+    public BillingPageController(InvoiceService invoices, PaymentService payments, Clock clock, Fmt fmt,
+                                 com.ispbilling.notification.NotificationService notifications,
+                                 com.ispbilling.invoice.InvoiceDeliveryService notificationsResend) {
+        this.notifications = notifications;
+        this.notificationsResend = notificationsResend;
         this.fmt = fmt;
         this.invoices = invoices;
         this.payments = payments;
@@ -53,7 +59,17 @@ public class BillingPageController extends PageSupport {
         model.addAttribute("invoice", invoices.get(id));
         model.addAttribute("payments", payments.listByInvoice(id));
         model.addAttribute("methods", PaymentMethod.values());
+        model.addAttribute("notifications", notifications.listForInvoice(id));
         return "invoices/detail";
+    }
+
+    @PostMapping("/invoices/{id}/notifications/resend")
+    String resend(@PathVariable Long id, RedirectAttributes ra) {
+        int n = notificationsResend.resend(id);
+        ra.addFlashAttribute(n > 0 ? "success" : "error", n > 0
+                ? "%d gönderim kuyruğa alındı; birkaç dakika içinde gönderilecek".formatted(n)
+                : "Gönderilecek kanal yok: abonenin e-posta/cep telefonu eksik veya gönderim kapalı");
+        return "redirect:/invoices/" + id;
     }
 
     @PostMapping("/invoices/{id}/payments")

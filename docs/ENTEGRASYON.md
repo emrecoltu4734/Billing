@@ -150,7 +150,9 @@ VALUES ('IYZ-552190331', 'ISP2026000000123', 396.00, 'ONLINE', TIMESTAMPTZ '2026
 | POST | `/api/v1/subscriptions/{id}/suspend` · `/resume` · `/terminate` | Durum geçişleri |
 | POST · GET | `/api/v1/bill-runs` | Dönemi faturala: `{"cycleCode":"C15","period":"2026-11"}` (`cycleCode` boşsa varsayılan) · geçmiş |
 | GET | `/api/v1/bill-runs/{id}` | Çalıştırma ayrıntısı ve faturalanamayan aboneler |
-| GET | `/api/v1/invoices?customerId=` · `/api/v1/invoices/{id}` | Faturalar |
+| GET | `/api/v1/invoices?customerId=` · `/api/v1/invoices/{id}` | Faturalar. `viewUrl`: abonenin fatura sayfası bağlantısı (kendi ekranınızda/mesajınızda kullanabilirsiniz) |
+| GET | `/api/v1/invoices/{id}/notifications` | E-posta/SMS gönderim durumu |
+| POST | `/api/v1/invoices/{id}/notifications/resend` | Faturayı aboneye yeniden gönder |
 | GET | `/api/v1/invoices/overdue` | Vadesi geçmiş faturalar |
 | POST | `/api/v1/payments` | Tahsilat |
 | POST | `/api/v1/imports/run` | Giriş tablolarını hemen işle |
@@ -175,6 +177,15 @@ curl -u entegrasyon:şifre -H 'Content-Type: application/json' \
 - Abone başka bir döneme taşındığında daha önce faturalanan günler tekrar faturalanmaz; yeni dönemin ilk
   faturası kaldığı günden başlar (kıst).
 - Otomatik faturalama dönem bazında açılır; açık olan dönemler fatura gününde gece faturalanır.
+
+### Faturanın kesinleşmesi ve aboneye iletilmesi
+
+- Faturalandırma sürerken faturalar `DRAFT` (taslak, numarasız) durumundadır; çalıştırma bitince kesinleşip
+  `ISSUED` olur ve numara alır. Taslak faturaya ödeme alınamaz; giriş tablosundaki ödemeler zaten fatura
+  numarasıyla eşleştiği için yalnızca kesinleşmiş faturalara uygulanır.
+- Fatura numaraları yıl içinde boşluksuzdur.
+- Kesinleşen fatura, abonenin e-posta adresine ve cep telefonuna (kurulumda açıksa) otomatik gönderilir.
+  Cep telefonu `0532…`, `532…`, `+90 532…` biçimlerinde verilebilir; sabit hatlara SMS gönderilmez.
 
 ## 6. Veritabanı kullanıcısı (giriş tabloları için)
 

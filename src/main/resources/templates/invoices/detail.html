@@ -5,13 +5,14 @@
 <section>
     <header class="page-head">
         <div>
-            <p class="crumb"><a th:href="@{/invoices}">Faturalar</a> / <span class="mono" th:text="${invoice.invoiceNo}"></span></p>
+            <p class="crumb"><a th:href="@{/invoices}">Faturalar</a> / <span class="mono" th:text="${invoice.invoiceNo ?: 'Taslak'}"></span></p>
             <h1>
                 <span th:text="|${@fmt.period(invoice.periodStart)} faturası|"></span>
                 <span class="badge" th:classappend="${'badge-' + @fmt.tone(invoice.status)}" th:text="${@fmt.label(invoice.status)}"></span>
                 <span class="badge badge-red" th:if="${invoice.overdue}">Gecikmiş</span>
             </h1>
         </div>
+        <a class="btn" th:if="${invoice.viewUrl}" th:href="${invoice.viewUrl}" target="_blank">Abone görünümü / Yazdır ↗</a>
     </header>
 
     <div class="card">
@@ -65,7 +66,7 @@
             </tr>
             </tbody>
         </table>
-        <form class="inline-form add-sub" th:if="${invoice.openAmount.signum() > 0 and invoice.status.name() != 'CANCELLED'}"
+        <form class="inline-form add-sub" th:if="${invoice.openAmount.signum() > 0 and invoice.status.name() != 'CANCELLED' and invoice.status.name() != 'DRAFT'}"
               th:action="@{/invoices/{id}/payments(id=${invoice.id})}" method="post">
             <label>Tutar (₺) <input name="amount" required inputmode="decimal" th:value="${@fmt.amountInput(invoice.openAmount)}"></label>
             <label>Yöntem
@@ -76,6 +77,29 @@
             <label>Referans <input name="reference" maxlength="100" placeholder="Dekont no vb."></label>
             <button class="btn btn-primary" type="submit">Tahsilat kaydet</button>
         </form>
+    </div>
+    <div class="card" th:unless="${invoice.status.name() == 'DRAFT'}">
+        <div class="card-head">
+            <h2>Aboneye gönderim</h2>
+            <form th:action="@{/invoices/{id}/notifications/resend(id=${invoice.id})}" method="post">
+                <button class="btn btn-small" type="submit">Yeniden gönder</button>
+            </form>
+        </div>
+        <p class="empty" th:if="${notifications.isEmpty()}">Gönderim yok: abonenin e-posta/cep telefonu kayıtlı değil veya gönderim kapalı.</p>
+        <table th:unless="${notifications.isEmpty()}">
+            <thead><tr><th>Kanal</th><th>Alıcı</th><th>Durum</th><th class="num">Deneme</th><th>Gönderim</th><th>Son hata</th></tr></thead>
+            <tbody>
+            <tr th:each="n : ${notifications}">
+                <td th:text="${n.channel == 'EMAIL'} ? 'E-posta' : 'SMS'"></td>
+                <td class="mono" th:text="${n.recipient}"></td>
+                <td><span class="badge" th:classappend="${n.status == 'SENT'} ? 'badge-green' : (${n.status == 'FAILED'} ? 'badge-red' : 'badge-amber')"
+                          th:text="${n.status == 'SENT'} ? 'Gönderildi' : (${n.status == 'FAILED'} ? 'Başarısız' : 'Bekliyor')"></span></td>
+                <td class="num" th:text="${n.attempts}"></td>
+                <td th:text="${n.sentAt != null} ? ${@fmt.dateTime(n.sentAt)} : |Sıradaki deneme: ${@fmt.dateTime(n.nextAttemptAt)}|"></td>
+                <td th:text="${n.lastError ?: '—'}"></td>
+            </tr>
+            </tbody>
+        </table>
     </div>
 </section>
 </body>

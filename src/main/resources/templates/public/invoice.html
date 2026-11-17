@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="tr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <title th:text="|${doc.company.name} · ${@fmt.period(doc.invoice.periodStart)} faturası|">Fatura</title>
+    <link rel="stylesheet" th:href="@{/css/invoice.css}">
+</head>
+<body th:with="inv=${doc.invoice}">
+<div class="toolbar no-print">
+    <button type="button" onclick="window.print()">Yazdır / PDF olarak kaydet</button>
+</div>
+
+<main class="sheet">
+    <header class="head">
+        <div class="company">
+            <div class="company-name" th:text="${doc.company.name}">İSS</div>
+            <div th:if="${doc.company.address}" th:text="${doc.company.address}"></div>
+            <div th:if="${doc.company.taxId}" th:text="|${doc.company.taxOffice} V.D. · VKN ${doc.company.taxId}|"></div>
+            <div>
+                <span th:if="${doc.company.phone}" th:text="${doc.company.phone}"></span>
+                <span th:if="${doc.company.email}" th:text="|· ${doc.company.email}|"></span>
+                <span th:if="${doc.company.website}" th:text="|· ${doc.company.website}|"></span>
+            </div>
+        </div>
+        <div class="doc-title">
+            <div class="label">FATURA</div>
+            <div class="mono" th:text="${inv.invoiceNo}"></div>
+            <div class="muted" th:text="|Fatura tarihi: ${@fmt.date(inv.issueDate)}|"></div>
+        </div>
+    </header>
+
+    <section class="parties">
+        <div>
+            <div class="label">Sayın</div>
+            <div class="strong" th:text="${inv.customerName}"></div>
+            <div th:if="${doc.address}" th:text="${doc.address}"></div>
+            <div class="muted">
+                <span th:text="|Abone no: ${doc.customerNo}|"></span>
+                <span th:text="|· TCKN/VKN: ${doc.maskedTaxId}|"></span>
+                <span th:if="${doc.taxOffice}" th:text="|· ${doc.taxOffice} V.D.|"></span>
+            </div>
+        </div>
+        <div class="due-box" th:classappend="${inv.openAmount.signum() == 0} ? 'paid'">
+            <th:block th:if="${inv.openAmount.signum() > 0}">
+                <div class="label">Ödenecek tutar</div>
+                <div class="amount" th:text="${@fmt.money(inv.openAmount)}"></div>
+                <div th:classappend="${inv.overdue} ? 'danger'" th:text="|Son ödeme tarihi: ${@fmt.date(inv.dueDate)}|"></div>
+                <div class="danger strong" th:if="${inv.overdue}">Son ödeme tarihi geçti</div>
+            </th:block>
+            <th:block th:unless="${inv.openAmount.signum() > 0}">
+                <div class="label">Durum</div>
+                <div class="amount">Ödendi ✓</div>
+                <div th:text="|Fatura tutarı: ${@fmt.money(inv.totalAmount)}|"></div>
+            </th:block>
+        </div>
+    </section>
+
+    <section class="facts">
+        <div><span class="label">Hizmet dönemi</span><span th:text="|${@fmt.date(inv.periodStart)} – ${@fmt.date(inv.periodEnd)}|"></span></div>
+        <div><span class="label">Fatura dönemi</span><span th:text="${doc.billCycleName}"></span></div>
+        <div><span class="label">Fatura tutarı</span><span th:text="${@fmt.money(inv.totalAmount)}"></span></div>
+    </section>
+
+    <section class="newer no-print" th:if="${doc.newerInvoice}">
+        Bu faturadan sonra kesilmiş bir faturanız var:
+        <a th:href="${doc.newerInvoice.viewUrl}" th:text="|${@fmt.period(doc.newerInvoice.periodStart)} faturası|"></a>
+    </section>
+
+    <section>
+        <h2>Fatura ayrıntısı</h2>
+        <table>
+            <thead><tr><th>Hizmet</th><th class="num wide-only">Gün</th><th class="num wide-only">Tutar</th><th class="num wide-only">ÖİV</th>
+                <th class="num wide-only">KDV</th><th class="num">Toplam</th></tr></thead>
+            <tbody>
+            <tr th:each="l : ${inv.lines}">
+                <td th:text="${l.description}"></td>
+                <td class="num wide-only" th:text="|${l.billedDays}/${l.periodDays}|"></td>
+                <td class="num wide-only" th:text="${@fmt.money(l.netAmount)}"></td>
+                <td class="num wide-only" th:text="${@fmt.money(l.oivAmount)}"></td>
+                <td class="num wide-only" th:text="${@fmt.money(l.vatAmount)}"></td>
+                <td class="num" th:text="${@fmt.money(l.totalAmount)}"></td>
+            </tr>
+            </tbody>
+        </table>
+        <dl class="totals">
+            <div><dt>Ara toplam</dt><dd th:text="${@fmt.money(inv.netAmount)}"></dd></div>
+            <div><dt>ÖİV</dt><dd th:text="${@fmt.money(inv.oivAmount)}"></dd></div>
+            <div><dt>KDV</dt><dd th:text="${@fmt.money(inv.vatAmount)}"></dd></div>
+            <div class="grand"><dt>Fatura tutarı</dt><dd th:text="${@fmt.money(inv.totalAmount)}"></dd></div>
+            <div th:if="${inv.paidAmount.signum() > 0}"><dt>Ödenen</dt><dd th:text="${@fmt.money(inv.paidAmount)}"></dd></div>
+            <div th:if="${inv.paidAmount.signum() > 0}" class="grand"><dt>Kalan</dt><dd th:text="${@fmt.money(inv.openAmount)}"></dd></div>
+        </dl>
+    </section>
+
+    <section class="account">
+        <h2 th:text="|Hesap durumunuz (${@fmt.date(doc.asOf)} itibarıyla)|"></h2>
+        <p class="ok" th:if="${doc.openInvoices.isEmpty()}">Ödenmemiş faturanız bulunmuyor. Teşekkür ederiz.</p>
+        <th:block th:unless="${doc.openInvoices.isEmpty()}">
+            <table>
+                <thead><tr><th>Ödenmemiş fatura</th><th>Son ödeme</th><th class="num">Kalan</th></tr></thead>
+                <tbody>
+                <tr th:each="o : ${doc.openInvoices}">
+                    <td><a th:href="${o.viewUrl}" th:text="|${@fmt.period(o.periodStart)} · ${o.invoiceNo}|"></a></td>
+                    <td th:classappend="${o.overdue} ? 'danger'" th:text="${@fmt.date(o.dueDate)}"></td>
+                    <td class="num" th:text="${@fmt.money(o.openAmount)}"></td>
+                </tr>
+                </tbody>
+            </table>
+            <dl class="totals">
+                <div th:if="${doc.previousBalance().signum() > 0}"><dt>Önceki dönemlerden kalan</dt>
+                    <dd th:text="${@fmt.money(doc.previousBalance())}"></dd></div>
+                <div class="grand big"><dt>Toplam borcunuz</dt><dd th:text="${@fmt.money(doc.totalDue)}"></dd></div>
+            </dl>
+            <p class="pay-info" th:if="${doc.company.iban}">
+                Havale/EFT ile ödeme: <span class="mono" th:text="${doc.company.iban}"></span> ·
+                açıklamaya abone numaranızı (<span th:text="${doc.customerNo}"></span>) yazınız.
+            </p>
+        </th:block>
+    </section>
+
+    <section th:unless="${doc.payments.isEmpty()}">
+        <h2>Bu faturaya yapılan ödemeler</h2>
+        <table>
+            <thead><tr><th>Tarih</th><th>Yöntem</th><th class="num">Tutar</th></tr></thead>
+            <tbody>
+            <tr th:each="p : ${doc.payments}">
+                <td th:text="${@fmt.dateTime(p.paidAt)}"></td>
+                <td th:text="${@fmt.label(p.method)}"></td>
+                <td class="num" th:text="${@fmt.money(p.amount)}"></td>
+            </tr>
+            </tbody>
+        </table>
+    </section>
+
+    <section class="no-print">
+        <h2>Geçmiş faturalarınız</h2>
+        <table>
+            <thead><tr><th>Dönem</th><th class="wide-only">Fatura no</th><th class="num">Tutar</th><th>Durum</th></tr></thead>
+            <tbody>
+            <tr th:each="h : ${doc.history}" th:classappend="${h.invoiceNo == inv.invoiceNo} ? 'current'">
+                <td><a th:href="${h.viewUrl}" th:text="${@fmt.period(h.periodStart)}"></a></td>
+                <td class="mono wide-only" th:text="${h.invoiceNo}"></td>
+                <td class="num" th:text="${@fmt.money(h.totalAmount)}"></td>
+                <td>
+                    <span th:text="${@fmt.label(h.status)}"></span>
+                    <span class="danger" th:if="${h.overdue}">· gecikmiş</span>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </section>
+
+    <footer class="foot">
+        Bu sayfa fatura bilgilendirmesidir; resmi e-Arşiv faturanız ayrıca iletilir.
+        Sorularınız için <span th:text="${doc.company.phone ?: doc.company.email}"></span>.
+    </footer>
+</main>
+</body>
+</html>

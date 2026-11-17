@@ -149,6 +149,9 @@ class BillCycleIntegrationTest {
                 .andExpect(jsonPath("$.errorCount").value(0))
                 .andExpect(jsonPath("$.errors.length()").value(0));
         assertThat(jdbc.sql("select count(*) from invoice").query(Long.class).single()).isEqualTo(2);
+        // Hatalı abone fatura numarası sırasında boşluk bırakmaz
+        assertThat(jdbc.sql("select invoice_no from invoice order by invoice_no").query(String.class).list())
+                .containsExactly("ISP2026000000001", "ISP2026000000002");
 
         // Artık tamamlandı: tekrar çalıştırılamaz
         run(null, "2026-10").andExpect(status().isConflict());

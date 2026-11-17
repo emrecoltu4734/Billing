@@ -1,0 +1,16 @@
+# Demo profili: örnek veri + gönderimler yalnızca loga yazılır
+billing:
+  company:
+    name: Örnek İnternet Hizmetleri
+    address: Cumhuriyet Mah. Atatürk Cad. No:12, Merkez
+    tax-office: Merkez
+    tax-id: "1234567890"
+    phone: 0850 000 00 00
+    email: destek@ornekinternet.com.tr
+    website: ornekinternet.com.tr
+    iban: TR00 0000 0000 0000 0000 0000 00
+  notification:
+    email:
+      mode: log
+    sms:
+      mode: log
